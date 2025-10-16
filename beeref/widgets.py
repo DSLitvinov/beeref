@@ -138,7 +138,7 @@ class WelcomeOverlay(MainControlsMixin, QtWidgets.QWidget):
         # Browse button
         self.browse_button = QtWidgets.QPushButton("Browse", self)
         self.browse_button.setFixedSize(120, 40)
-        self.browse_button.setStyleSheet(BeeRefStyles.get_browse_button_style())
+        self.browse_button.setStyleSheet(BeeRefStyles.get_button_style())
         self.browse_button.clicked.connect(self.on_browse_clicked)
         self.layout.addWidget(self.browse_button, alignment=Qt.AlignmentFlag.AlignCenter)
         

@@ -22,7 +22,7 @@ class HelpDialog(QtWidgets.QDialog):
         super().__init__(parent)
         self.setWindowTitle('Help')
         self.setFixedSize(500, 600)
-        self.setStyleSheet(BeeRefStyles.get_dialog_style() + BeeRefStyles.get_link_button_style())
+        self.setStyleSheet(BeeRefStyles.get_dialog_style())
         
         # Main layout
         layout = QtWidgets.QVBoxLayout()

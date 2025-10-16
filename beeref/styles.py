@@ -19,7 +19,28 @@
 class BeeRefStyles:
     """Centralized styling definitions for BeeRef UI components."""
     
-    # Color definitions
+    # Color definitions from constants.py
+    COLORS = {
+        # Qt:
+        'Active:Base': (60, 60, 60),
+        'Active:Window': (40, 40, 40),
+        'Active:Button': (60, 60, 60),
+        'Active:Text': (200, 200, 200),
+        'Active:HighlightedText': (255, 255, 255),
+        'Active:WindowText': (200, 200, 200),
+        'Active:ButtonText': (200, 200, 200),
+        'Active:Highlight': (100, 100, 100),
+        'Active:Link': (100, 100, 100),
+        'Disabled:Light': (0, 0, 0, 0),
+        'Disabled:Text': (140, 140, 140),
+
+        # BeeRef specific:
+        'Scene:Selection': (100, 100, 100),
+        'Scene:Canvas': (60, 60, 60),
+        'Scene:Text': (200, 200, 200)
+    }
+    
+    # UI-specific color definitions
     DARK_BACKGROUND = "#2d2d2d"
     WHITE_TEXT = "#ffffff"
     BLUE_LINK = "#0078d4"
@@ -27,7 +48,7 @@ class BeeRefStyles:
     BLUE_LINK_PRESSED = "#005a9e"
     GRAY_TEXT = "#888888"
     
-    # Dialog styles
+    # Base dialog style
     DIALOG_STYLE = f"""
         QDialog {{
             background-color: {DARK_BACKGROUND};
@@ -39,7 +60,7 @@ class BeeRefStyles:
         }}
     """
     
-    # Button styles
+    # Consolidated button style (used for all buttons)
     BUTTON_STYLE = f"""
         QPushButton {{
             background-color: {BLUE_LINK};
@@ -57,22 +78,7 @@ class BeeRefStyles:
         }}
     """
     
-    # Link button styles (transparent background)
-    LINK_BUTTON_STYLE = f"""
-        QPushButton {{
-            background-color: transparent;
-            color: {BLUE_LINK};
-            text-decoration: underline;
-            border: none;
-            padding: 0px;
-            text-align: left;
-        }}
-        QPushButton:hover {{
-            color: {BLUE_LINK_HOVER};
-        }}
-    """
-    
-    # Table styles
+    # Table style
     TABLE_STYLE = f"""
         QTableWidget {{
             background-color: transparent;
@@ -90,7 +96,7 @@ class BeeRefStyles:
         }}
     """
     
-    # Welcome screen text styles
+    # Text styles
     WELCOME_TEXT_STYLE = f"""
         QLabel {{
             color: {GRAY_TEXT};
@@ -106,32 +112,12 @@ class BeeRefStyles:
         }}
     """
     
-    # Browse button style (specific to welcome screen)
-    BROWSE_BUTTON_STYLE = f"""
-        QPushButton {{
-            background-color: {BLUE_LINK};
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: bold;
-        }}
-        QPushButton:hover {{
-            background-color: {BLUE_LINK_HOVER};
-        }}
-        QPushButton:pressed {{
-            background-color: {BLUE_LINK_PRESSED};
-        }}
-    """
-    
-    # Help link style
-    HELP_LINK_STYLE = f"color: {GRAY_TEXT}; text-decoration: underline;"
-    
     # Section title styles
     SECTION_TITLE_STYLE = "font-weight: bold; font-size: 16px; margin-bottom: 10px;"
     SECTION_TITLE_WITH_MARGIN_STYLE = "font-weight: bold; font-size: 16px; margin-top: 20px; margin-bottom: 10px;"
     
-    # Link styles for HTML content
+    # Link styles
+    HELP_LINK_STYLE = f"color: {GRAY_TEXT}; text-decoration: underline;"
     HTML_LINK_STYLE = f"color: {BLUE_LINK}; text-decoration: underline;"
     
     @staticmethod
@@ -141,13 +127,8 @@ class BeeRefStyles:
     
     @staticmethod
     def get_button_style():
-        """Get the standard button styling."""
+        """Get the consolidated button styling."""
         return BeeRefStyles.BUTTON_STYLE
-    
-    @staticmethod
-    def get_link_button_style():
-        """Get the link button styling."""
-        return BeeRefStyles.LINK_BUTTON_STYLE
     
     @staticmethod
     def get_table_style():
@@ -163,11 +144,6 @@ class BeeRefStyles:
     def get_welcome_or_text_style():
         """Get the welcome screen 'or' text styling."""
         return BeeRefStyles.WELCOME_OR_TEXT_STYLE
-    
-    @staticmethod
-    def get_browse_button_style():
-        """Get the browse button styling."""
-        return BeeRefStyles.BROWSE_BUTTON_STYLE
     
     @staticmethod
     def get_help_link_style():
@@ -188,3 +164,8 @@ class BeeRefStyles:
     def get_html_link_style():
         """Get the HTML link styling."""
         return BeeRefStyles.HTML_LINK_STYLE
+    
+    @staticmethod
+    def get_colors():
+        """Get the COLORS dictionary from constants."""
+        return BeeRefStyles.COLORS
