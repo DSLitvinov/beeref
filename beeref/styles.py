@@ -63,18 +63,20 @@ class BeeRefStyles:
     # Consolidated button style (used for all buttons)
     BUTTON_STYLE = f"""
         QPushButton {{
-            background-color: {BLUE_LINK};
-            color: white;
-            border: none;
+            background-color: {DARK_BACKGROUND};
+            color: {WHITE_TEXT};
+            border: 1px solid #555555;
             border-radius: 6px;
             font-size: 14px;
             font-weight: bold;
         }}
         QPushButton:hover {{
-            background-color: {BLUE_LINK_HOVER};
+            background-color: #3d3d3d;
+            border-color: #666666;
         }}
         QPushButton:pressed {{
-            background-color: {BLUE_LINK_PRESSED};
+            background-color: #1d1d1d;
+            border-color: #444444;
         }}
     """
     
@@ -118,7 +120,7 @@ class BeeRefStyles:
     
     # Link styles
     HELP_LINK_STYLE = f"color: {GRAY_TEXT}; text-decoration: underline;"
-    HTML_LINK_STYLE = f"color: {BLUE_LINK}; text-decoration: underline;"
+    HTML_LINK_STYLE = f"color: {GRAY_TEXT}; text-decoration: underline;"
     
     @staticmethod
     def get_dialog_style():
