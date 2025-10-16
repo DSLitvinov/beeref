@@ -52,7 +52,7 @@ class BeeRefMainWindow(QtWidgets.QMainWindow):
         app.setApplicationName(constants.APPNAME)
         self.setWindowIcon(BeeAssets().logo)
         self.view = BeeGraphicsView(app, self)
-        default_window_size = QtCore.QSize(500, 300)
+        default_window_size = QtCore.QSize(1200, 800)
         geom = self.view.settings.value('MainWindow/geometry')
         if geom is None:
             self.resize(default_window_size)

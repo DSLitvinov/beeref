@@ -90,26 +90,98 @@ class RecentFilesView(QtWidgets.QListView):
 class WelcomeOverlay(MainControlsMixin, QtWidgets.QWidget):
     """Some basic info to be displayed when the scene is empty."""
 
-    txt = """<p>Paste or drop images here.</p>
-             <p>Right-click for more options.</p>"""
-
     def __init__(self, parent):
         super().__init__(parent)
         self.control_target = parent
         self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
         self.init_main_controls()
 
-        # Help text
-        label = QtWidgets.QLabel(self.txt, self)
-        label.setAlignment(Qt.AlignmentFlag.AlignVCenter
-                           | Qt.AlignmentFlag.AlignCenter)
-        self.layout = QtWidgets.QHBoxLayout()
-        self.layout.addStretch(50)
-        self.layout.addWidget(label)
-        self.layout.addStretch(50)
+        # Main vertical layout
+        self.layout = QtWidgets.QVBoxLayout()
+        self.layout.setContentsMargins(50, 50, 50, 50)
+        self.layout.setSpacing(12)
+        
+        # Add stretch to center content vertically
+        self.layout.addStretch(2)
+        
+        # 256x256 placeholder icon
+        self.icon_label = QtWidgets.QLabel()
+        self.icon_label.setFixedSize(256, 256)
+        self.icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        # Load the placeholder SVG icon
+        icon_path = os.path.join(os.path.dirname(__file__), 'assets', 'placeholder_icon.svg')
+        if os.path.exists(icon_path):
+            pixmap = QtGui.QPixmap(icon_path)
+            self.icon_label.setPixmap(pixmap.scaled(256, 256, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+        else:
+            # Fallback: create a simple white rectangle
+            pixmap = QtGui.QPixmap(256, 256)
+            pixmap.fill(QtGui.QColor(255, 255, 255))
+            self.icon_label.setPixmap(pixmap)
+        
+        self.layout.addWidget(self.icon_label, alignment=Qt.AlignmentFlag.AlignCenter)
+        
+        # "Drag and drop images here" text
+        drop_text = QtWidgets.QLabel("Drag and drop images here")
+        drop_text.setStyleSheet("""
+            QLabel {
+                color: #888888;
+                font-size: 16px;
+                font-weight: normal;
+            }
+        """)
+        drop_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.layout.addWidget(drop_text)
+        
+        # "or" separator
+        or_label = QtWidgets.QLabel("or")
+        or_label.setStyleSheet("""
+            QLabel {
+                color: #888888;
+                font-size: 14px;
+            }
+        """)
+        or_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.layout.addWidget(or_label)
+        
+        # Browse button
+        self.browse_button = QtWidgets.QPushButton("Browse", self)
+        self.browse_button.setFixedSize(120, 40)
+        self.browse_button.setStyleSheet("""
+            QPushButton {
+                background-color: #0078D4;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                font-size: 14px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #106EBE;
+            }
+            QPushButton:pressed {
+                background-color: #005A9E;
+            }
+        """)
+        self.browse_button.clicked.connect(self.on_browse_clicked)
+        self.layout.addWidget(self.browse_button, alignment=Qt.AlignmentFlag.AlignCenter)
+        
+        # Add stretch before help link
+        self.layout.addStretch(3)
+        
+        # Help link
+        self.help_link = QtWidgets.QLabel('<a href="#" style="color: #888888; text-decoration: underline;">Help</a>')
+        self.help_link.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.help_link.linkActivated.connect(self.on_help_clicked)
+        self.layout.addWidget(self.help_link)
+        
+        # Add stretch at the end
+        self.layout.addStretch(1)
+        
         self.setLayout(self.layout)
 
-        # Recent files
+        # Recent files (hidden by default, shown only when there are recent files)
         self.files_layout = QtWidgets.QVBoxLayout()
         self.files_layout.addStretch(50)
         self.files_layout.addWidget(
@@ -118,11 +190,23 @@ class WelcomeOverlay(MainControlsMixin, QtWidgets.QWidget):
         self.files_layout.addWidget(self.files_view)
         self.files_layout.addStretch(50)
 
+    def on_browse_clicked(self):
+        """Handle the browse button click to open file manager."""
+        self.control_target.on_action_insert_images()
+
+    def on_help_clicked(self):
+        """Handle the help link click."""
+        from beeref.widgets import HelpDialog
+        HelpDialog(self)
+
     def show(self):
         files = BeeSettings().get_recent_files(existing_only=True)
         self.files_view.update_files(files)
+        # Show recent files section if there are recent files
         if files and self.layout.indexOf(self.files_layout) < 0:
-            self.layout.insertLayout(0, self.files_layout)
+            # Insert recent files before the help link
+            help_index = self.layout.indexOf(self.help_link)
+            self.layout.insertLayout(help_index, self.files_layout)
         super().show()
 
 
