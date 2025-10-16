@@ -168,7 +168,7 @@ class WelcomeOverlay(MainControlsMixin, QtWidgets.QWidget):
         self.layout.addWidget(self.browse_button, alignment=Qt.AlignmentFlag.AlignCenter)
         
         # Add stretch before help link
-        self.layout.addStretch(3)
+        self.layout.addStretch(1)
         
         # Help link
         self.help_link = QtWidgets.QLabel('<a href="#" style="color: #888888; text-decoration: underline;">Help</a>')

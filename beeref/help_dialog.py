@@ -105,7 +105,7 @@ class HelpDialog(QtWidgets.QDialog):
             controls_table.setItem(i, 1, input_item)
         
         controls_table.resizeColumnsToContents()
-        controls_table.setMaximumHeight(200)
+        controls_table.setMaximumHeight(300)
         layout.addWidget(controls_table)
         
         # Additional controls info
@@ -127,6 +127,7 @@ class HelpDialog(QtWidgets.QDialog):
         # About link
         about_link = QtWidgets.QLabel("<a href='#' style='color: #0078d4; text-decoration: underline;'>About BeeRef</a>")
         about_link.setOpenExternalLinks(False)
+        about_link.linkActivated.connect(self.on_about_clicked)
         layout.addWidget(about_link)
         
         # Add stretch to push content to top
@@ -134,3 +135,8 @@ class HelpDialog(QtWidgets.QDialog):
         
         self.setLayout(layout)
         self.show()
+
+    def on_about_clicked(self):
+        """Handle the about link click."""
+        from beeref.about_dialog import AboutDialog
+        AboutDialog(self)

@@ -395,14 +395,8 @@ class BeeGraphicsView(MainControlsMixin,
         HelpDialog(self)
 
     def on_action_about(self):
-        QtWidgets.QMessageBox.about(
-            self,
-            f'About {constants.APPNAME}',
-            (f'<h2>{constants.APPNAME} {constants.VERSION}</h2>'
-             f'<p>{constants.APPNAME_FULL}</p>'
-             f'<p>{constants.COPYRIGHT}</p>'
-             f'<p><a href="{constants.WEBSITE}">'
-             f'Visit the {constants.APPNAME} website</a></p>'))
+        from beeref.about_dialog import AboutDialog
+        AboutDialog(self)
 
     def on_action_debuglog(self):
         widgets.DebugLogDialog(self)
