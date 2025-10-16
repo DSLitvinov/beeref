@@ -22,6 +22,7 @@ from PyQt6.QtCore import Qt
 from beeref import constants
 from beeref.config import logfile_name, BeeSettings
 from beeref.main_controls import MainControlsMixin
+from beeref.styles import BeeRefStyles
 
 
 logger = logging.getLogger(__name__)
@@ -124,46 +125,20 @@ class WelcomeOverlay(MainControlsMixin, QtWidgets.QWidget):
         
         # "Drag and drop images here" text
         drop_text = QtWidgets.QLabel("Drag and drop images here")
-        drop_text.setStyleSheet("""
-            QLabel {
-                color: #888888;
-                font-size: 16px;
-                font-weight: normal;
-            }
-        """)
+        drop_text.setStyleSheet(BeeRefStyles.get_welcome_text_style())
         drop_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.layout.addWidget(drop_text)
         
         # "or" separator
         or_label = QtWidgets.QLabel("or")
-        or_label.setStyleSheet("""
-            QLabel {
-                color: #888888;
-                font-size: 14px;
-            }
-        """)
+        or_label.setStyleSheet(BeeRefStyles.get_welcome_or_text_style())
         or_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.layout.addWidget(or_label)
         
         # Browse button
         self.browse_button = QtWidgets.QPushButton("Browse", self)
         self.browse_button.setFixedSize(120, 40)
-        self.browse_button.setStyleSheet("""
-            QPushButton {
-                background-color: #0078D4;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                font-size: 14px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #106EBE;
-            }
-            QPushButton:pressed {
-                background-color: #005A9E;
-            }
-        """)
+        self.browse_button.setStyleSheet(BeeRefStyles.get_browse_button_style())
         self.browse_button.clicked.connect(self.on_browse_clicked)
         self.layout.addWidget(self.browse_button, alignment=Qt.AlignmentFlag.AlignCenter)
         
@@ -171,7 +146,7 @@ class WelcomeOverlay(MainControlsMixin, QtWidgets.QWidget):
         self.layout.addStretch(1)
         
         # Help link
-        self.help_link = QtWidgets.QLabel('<a href="#" style="color: #888888; text-decoration: underline;">Help</a>')
+        self.help_link = QtWidgets.QLabel(f'<a href="#" style="{BeeRefStyles.get_help_link_style()}">Help</a>')
         self.help_link.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.help_link.linkActivated.connect(self.on_help_clicked)
         self.layout.addWidget(self.help_link)

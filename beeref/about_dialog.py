@@ -15,6 +15,7 @@
 
 from PyQt6 import QtCore, QtWidgets
 from beeref import constants
+from beeref.styles import BeeRefStyles
 
 
 class AboutDialog(QtWidgets.QDialog):
@@ -22,31 +23,7 @@ class AboutDialog(QtWidgets.QDialog):
         super().__init__(parent)
         self.setWindowTitle(f'About {constants.APPNAME}')
         self.setFixedSize(400, 300)
-        self.setStyleSheet("""
-            QDialog {
-                background-color: #2d2d2d;
-                color: #ffffff;
-            }
-            QLabel {
-                color: #ffffff;
-                background-color: transparent;
-            }
-            QPushButton {
-                background-color: #0078d4;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px 16px;
-                font-size: 14px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #106ebe;
-            }
-            QPushButton:pressed {
-                background-color: #005a9e;
-            }
-        """)
+        self.setStyleSheet(BeeRefStyles.get_dialog_style() + BeeRefStyles.get_button_style())
         
         # Main layout
         layout = QtWidgets.QVBoxLayout()
@@ -70,7 +47,7 @@ class AboutDialog(QtWidgets.QDialog):
         layout.addWidget(copyright_label)
         
         # Website link
-        website_label = QtWidgets.QLabel(f"<p><a href='{constants.WEBSITE}' style='color: #0078d4; text-decoration: underline;'>Visit the {constants.APPNAME} website</a></p>")
+        website_label = QtWidgets.QLabel(f"<p><a href='{constants.WEBSITE}' style='{BeeRefStyles.get_html_link_style()}'>Visit the {constants.APPNAME} website</a></p>")
         website_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         website_label.setOpenExternalLinks(True)
         layout.addWidget(website_label)

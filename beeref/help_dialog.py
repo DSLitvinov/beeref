@@ -14,6 +14,7 @@
 # along with BeeRef.  If not, see <https://www.gnu.org/licenses/>.
 
 from PyQt6 import QtWidgets
+from beeref.styles import BeeRefStyles
 
 
 class HelpDialog(QtWidgets.QDialog):
@@ -21,27 +22,7 @@ class HelpDialog(QtWidgets.QDialog):
         super().__init__(parent)
         self.setWindowTitle('Help')
         self.setFixedSize(500, 600)
-        self.setStyleSheet("""
-            QDialog {
-                background-color: #2d2d2d;
-                color: #ffffff;
-            }
-            QLabel {
-                color: #ffffff;
-                background-color: transparent;
-            }
-            QPushButton {
-                background-color: transparent;
-                color: #0078d4;
-                text-decoration: underline;
-                border: none;
-                padding: 0px;
-                text-align: left;
-            }
-            QPushButton:hover {
-                color: #106ebe;
-            }
-        """)
+        self.setStyleSheet(BeeRefStyles.get_dialog_style() + BeeRefStyles.get_link_button_style())
         
         # Main layout
         layout = QtWidgets.QVBoxLayout()
@@ -50,11 +31,11 @@ class HelpDialog(QtWidgets.QDialog):
         
         # Controls section
         controls_title = QtWidgets.QLabel("Controls")
-        controls_title.setStyleSheet("font-weight: bold; font-size: 16px; margin-bottom: 10px;")
+        controls_title.setStyleSheet(BeeRefStyles.get_section_title_style())
         layout.addWidget(controls_title)
         
         # Controls intro text
-        controls_intro = QtWidgets.QLabel("For more in depth help refer to the <a href='#' style='color: #0078d4; text-decoration: underline;'>handbook</a>.")
+        controls_intro = QtWidgets.QLabel(f"For more in depth help refer to the <a href='#' style='{BeeRefStyles.get_html_link_style()}'>handbook</a>.")
         controls_intro.setWordWrap(True)
         controls_intro.setOpenExternalLinks(False)
         layout.addWidget(controls_intro)
@@ -71,22 +52,7 @@ class HelpDialog(QtWidgets.QDialog):
         controls_table.verticalHeader().setVisible(False)
         controls_table.setShowGrid(False)
         controls_table.setAlternatingRowColors(False)
-        controls_table.setStyleSheet("""
-            QTableWidget {
-                background-color: transparent;
-                border: none;
-                gridline-color: transparent;
-            }
-            QTableWidget::item {
-                padding: 5px;
-                border: none;
-            }
-            QHeaderView::section {
-                background-color: transparent;
-                border: none;
-                padding: 5px;
-            }
-        """)
+        controls_table.setStyleSheet(BeeRefStyles.get_table_style())
         
         # Populate controls table
         controls_data = [
@@ -109,23 +75,23 @@ class HelpDialog(QtWidgets.QDialog):
         layout.addWidget(controls_table)
         
         # Additional controls info
-        controls_info = QtWidgets.QLabel("To see all controls and set them yourself, check out <a href='#' style='color: #0078d4; text-decoration: underline;'>keyboard shortcuts</a> and the <a href='#' style='color: #0078d4; text-decoration: underline;'>default shortcuts</a> web page for more details.")
+        controls_info = QtWidgets.QLabel(f"To see all controls and set them yourself, check out <a href='#' style='{BeeRefStyles.get_html_link_style()}'>keyboard shortcuts</a> and the <a href='#' style='{BeeRefStyles.get_html_link_style()}'>default shortcuts</a> web page for more details.")
         controls_info.setWordWrap(True)
         controls_info.setOpenExternalLinks(False)
         layout.addWidget(controls_info)
         
         # Support section
         support_title = QtWidgets.QLabel("Support")
-        support_title.setStyleSheet("font-weight: bold; font-size: 16px; margin-top: 20px; margin-bottom: 10px;")
+        support_title.setStyleSheet(BeeRefStyles.get_section_title_with_margin_style())
         layout.addWidget(support_title)
         
-        support_text = QtWidgets.QLabel("For troubleshooting, please consult the <a href='#' style='color: #0078d4; text-decoration: underline;'>FAQ</a>. For additional help, submitting bug reports, suggestions, or anything else you might want to tell us, visit the <a href='#' style='color: #0078d4; text-decoration: underline;'>forums</a>.")
+        support_text = QtWidgets.QLabel(f"For troubleshooting, please consult the <a href='#' style='{BeeRefStyles.get_html_link_style()}'>FAQ</a>. For additional help, submitting bug reports, suggestions, or anything else you might want to tell us, visit the <a href='#' style='{BeeRefStyles.get_html_link_style()}'>forums</a>.")
         support_text.setWordWrap(True)
         support_text.setOpenExternalLinks(False)
         layout.addWidget(support_text)
         
         # About link
-        about_link = QtWidgets.QLabel("<a href='#' style='color: #0078d4; text-decoration: underline;'>About BeeRef</a>")
+        about_link = QtWidgets.QLabel(f"<a href='#' style='{BeeRefStyles.get_html_link_style()}'>About BeeRef</a>")
         about_link.setOpenExternalLinks(False)
         about_link.linkActivated.connect(self.on_about_clicked)
         layout.addWidget(about_link)
