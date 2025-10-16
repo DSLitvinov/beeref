@@ -391,7 +391,8 @@ class BeeGraphicsView(MainControlsMixin,
         self.app.quit()
 
     def on_action_help(self):
-        widgets.HelpDialog(self)
+        from beeref.help_dialog import HelpDialog
+        HelpDialog(self)
 
     def on_action_about(self):
         QtWidgets.QMessageBox.about(

@@ -196,7 +196,7 @@ class WelcomeOverlay(MainControlsMixin, QtWidgets.QWidget):
 
     def on_help_clicked(self):
         """Handle the help link click."""
-        from beeref.widgets import HelpDialog
+        from beeref.help_dialog import HelpDialog
         HelpDialog(self)
 
     def show(self):
@@ -238,31 +238,6 @@ class BeeProgressDialog(QtWidgets.QProgressDialog):
         self.reset()
         self.hide()
         QtCore.QTimer.singleShot(100, self.deleteLater)
-
-
-class HelpDialog(QtWidgets.QDialog):
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.setWindowTitle(f'{constants.APPNAME} Help')
-        docdir = os.path.join(os.path.dirname(__file__),
-                              'documentation')
-        tabs = QtWidgets.QTabWidget()
-
-        # Controls
-        with open(os.path.join(docdir, 'controls.html')) as f:
-            controls_txt = f.read()
-        controls = QtWidgets.QLabel(controls_txt)
-        controls.setTextInteractionFlags(
-            Qt.TextInteractionFlag.TextSelectableByMouse)
-        scroll = QtWidgets.QScrollArea(self)
-        scroll.setWidgetResizable(True)
-        scroll.setWidget(controls)
-        tabs.addTab(scroll, '&Controls')
-
-        layout = QtWidgets.QVBoxLayout()
-        self.setLayout(layout)
-        layout.addWidget(tabs)
-        self.show()
 
 
 class DebugLogDialog(QtWidgets.QDialog):
