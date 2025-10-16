@@ -129,11 +129,11 @@ class WelcomeOverlay(MainControlsMixin, QtWidgets.QWidget):
         drop_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.layout.addWidget(drop_text)
         
-        # "or" separator
-        or_label = QtWidgets.QLabel("or")
-        or_label.setStyleSheet(BeeRefStyles.get_welcome_or_text_style())
-        or_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.layout.addWidget(or_label)
+        # "or" text on separate line
+        or_text = QtWidgets.QLabel("or")
+        or_text.setStyleSheet(BeeRefStyles.get_welcome_text_style())
+        or_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.layout.addWidget(or_text)
         
         # Browse button
         self.browse_button = QtWidgets.QPushButton("Browse", self)
@@ -141,10 +141,7 @@ class WelcomeOverlay(MainControlsMixin, QtWidgets.QWidget):
         self.browse_button.setStyleSheet(BeeRefStyles.get_button_style())
         self.browse_button.clicked.connect(self.on_browse_clicked)
         self.layout.addWidget(self.browse_button, alignment=Qt.AlignmentFlag.AlignCenter)
-        
-        # Add stretch before help link
-        self.layout.addStretch(1)
-        
+ 
         # Help link
         self.help_link = QtWidgets.QLabel(f'<a href="#" style="{BeeRefStyles.get_help_link_style()}">Help</a>')
         self.help_link.setAlignment(Qt.AlignmentFlag.AlignCenter)

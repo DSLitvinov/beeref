@@ -102,7 +102,7 @@ class BeeRefStyles:
     WELCOME_TEXT_STYLE = f"""
         QLabel {{
             color: {GRAY_TEXT};
-            font-size: 16px;
+            font-size: 22px;
             font-weight: normal;
         }}
     """
