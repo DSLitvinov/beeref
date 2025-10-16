@@ -96,6 +96,9 @@ class WelcomeOverlay(MainControlsMixin, QtWidgets.QWidget):
         self.control_target = parent
         self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
         self.init_main_controls()
+        
+        # Initialize language from settings
+        self.init_language()
 
         # Main vertical layout
         self.layout = QtWidgets.QVBoxLayout()
@@ -124,29 +127,32 @@ class WelcomeOverlay(MainControlsMixin, QtWidgets.QWidget):
         self.layout.addWidget(self.icon_label, alignment=Qt.AlignmentFlag.AlignCenter)
         
         # "Drag and drop images here" text
-        drop_text = QtWidgets.QLabel("Drag and drop images here")
-        drop_text.setStyleSheet(BeeRefStyles.get_welcome_text_style())
-        drop_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.layout.addWidget(drop_text)
+        self.drop_text = QtWidgets.QLabel()
+        self.drop_text.setStyleSheet(BeeRefStyles.get_welcome_text_style())
+        self.drop_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.layout.addWidget(self.drop_text)
         
         # "or" text on separate line
-        or_text = QtWidgets.QLabel("or")
-        or_text.setStyleSheet(BeeRefStyles.get_welcome_text_style())
-        or_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.layout.addWidget(or_text)
+        self.or_text = QtWidgets.QLabel()
+        self.or_text.setStyleSheet(BeeRefStyles.get_welcome_text_style())
+        self.or_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.layout.addWidget(self.or_text)
         
         # Browse button
-        self.browse_button = QtWidgets.QPushButton("Browse", self)
+        self.browse_button = QtWidgets.QPushButton()
         self.browse_button.setFixedSize(120, 40)
         self.browse_button.setStyleSheet(BeeRefStyles.get_button_style())
         self.browse_button.clicked.connect(self.on_browse_clicked)
         self.layout.addWidget(self.browse_button, alignment=Qt.AlignmentFlag.AlignCenter)
- 
+  
         # Help link
-        self.help_link = QtWidgets.QLabel(f'<a href="#" style="{BeeRefStyles.get_help_link_style()}">Help</a>')
+        self.help_link = QtWidgets.QLabel()
         self.help_link.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.help_link.linkActivated.connect(self.on_help_clicked)
         self.layout.addWidget(self.help_link)
+        
+        # Initialize with translations
+        self.update_text()
         
         # Add stretch at the end
         self.layout.addStretch(1)
@@ -170,6 +176,24 @@ class WelcomeOverlay(MainControlsMixin, QtWidgets.QWidget):
         """Handle the help link click."""
         from beeref.help_dialog import HelpDialog
         HelpDialog(self)
+    
+    def init_language(self):
+        """Initialize language from settings."""
+        from beeref.localization import translator
+        from beeref.config import BeeSettings
+        
+        settings = BeeSettings()
+        language = settings.value('General/language', 'en', type=str)
+        translator.set_language(language)
+    
+    def update_text(self):
+        """Update text with current translations."""
+        from beeref.localization import tr
+        
+        self.drop_text.setText(tr('drag_drop_text'))
+        self.or_text.setText(tr('or_text'))
+        self.browse_button.setText(tr('browse_button'))
+        self.help_link.setText(f'<a href="#" style="{BeeRefStyles.get_help_link_style()}">{tr("help_link")}</a>')
 
     def show(self):
         files = BeeSettings().get_recent_files(existing_only=True)

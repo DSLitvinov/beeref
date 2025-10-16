@@ -19,8 +19,8 @@ import os.path
 
 from PyQt6 import QtGui, QtWidgets
 
-from .actions import actions
-from .menu_structure import menu_structure, MENU_SEPARATOR
+from .actions import get_actions
+from .menu_structure import get_menu_structure, MENU_SEPARATOR
 
 from beeref.config import KeyboardSettings
 
@@ -39,7 +39,7 @@ class ActionsMixin:
         self.bee_actiongroups = defaultdict(list)
         self._post_create_functions = []
         self._create_actions()
-        self._create_menu(self.bee_actions, self.context_menu, menu_structure)
+        self._create_menu(self.bee_actions, self.context_menu, get_menu_structure())
         for func, arg in self._post_create_functions:
             func(arg)
         del self._post_create_functions
@@ -71,7 +71,7 @@ class ActionsMixin:
                 partial(self._store_checkable_setting, settings_key))
 
     def _create_actions(self):
-        for action in actions:
+        for action in get_actions():
             qaction = QtGui.QAction(action['text'], self)
             shortcuts = KeyboardSettings().get_shortcuts(
                 'Actions', action['id'], action.get('shortcuts'))

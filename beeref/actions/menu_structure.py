@@ -13,16 +13,20 @@
 # You should have received a copy of the GNU General Public License
 # along with BeeRef.  If not, see <https://www.gnu.org/licenses/>.
 
+from beeref.localization import tr
+
 MENU_SEPARATOR = 0
 
-menu_structure = [
+def get_menu_structure():
+    """Get menu structure with current translations."""
+    return [
     {
-        'menu': '&File',
+        'menu': tr('file_menu'),
         'items': [
             'new_scene',
             'open',
             {
-                'menu': 'Open &Recent',
+                'menu': tr('open_recent'),
                 'items': '_build_recent_files',
             },
             MENU_SEPARATOR,
@@ -33,7 +37,7 @@ menu_structure = [
         ],
     },
     {
-        'menu': '&Edit',
+        'menu': tr('edit_menu'),
         'items': [
             'undo',
             'redo',
@@ -51,7 +55,7 @@ menu_structure = [
         ],
     },
     {
-        'menu': '&View',
+        'menu': tr('view_menu'),
         'items': [
             'fit_scene',
             'fit_selection',
@@ -64,14 +68,14 @@ menu_structure = [
         ],
     },
     {
-        'menu': '&Insert',
+        'menu': tr('insert_menu'),
         'items': [
             'insert_images',
             'insert_text',
         ],
     },
     {
-        'menu': '&Transform',
+        'menu': tr('transform_menu'),
         'items': [
             'crop',
             'flip_horizontally',
@@ -85,7 +89,7 @@ menu_structure = [
         ],
     },
     {
-        'menu': '&Normalize',
+        'menu': tr('normalize_menu'),
         'items': [
             'normalize_height',
             'normalize_width',
@@ -93,7 +97,7 @@ menu_structure = [
         ],
     },
     {
-        'menu': '&Arrange',
+        'menu': tr('arrange_menu'),
         'items': [
             'arrange_optimal',
             'arrange_horizontal',
@@ -101,13 +105,21 @@ menu_structure = [
         ],
     },
     {
-        'menu': '&Settings',
+        'menu': tr('settings_menu'),
         'items': [
+            {
+                'menu': tr('language_settings'),
+                'items': [
+                    'language_english',
+                    'language_russian',
+                ],
+            },
+            MENU_SEPARATOR,
             'open_settings_dir',
         ],
     },
     {
-        'menu': '&Help',
+        'menu': tr('help_menu'),
         'items': [
             'help',
             'about',
@@ -115,3 +127,6 @@ menu_structure = [
         ],
     },
 ]
+
+# For backward compatibility
+menu_structure = get_menu_structure()

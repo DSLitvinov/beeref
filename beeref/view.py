@@ -45,6 +45,7 @@ class BeeGraphicsView(MainControlsMixin,
         self.app = app
         self.parent = parent
         self.settings = BeeSettings()
+        
         self.welcome_overlay = widgets.WelcomeOverlay(self)
 
         self.setBackgroundBrush(
@@ -517,14 +518,108 @@ class BeeGraphicsView(MainControlsMixin,
         QtGui.QDesktopServices.openUrl(
             QtCore.QUrl.fromLocalFile(dirname))
 
+    def init_language(self):
+        """Initialize language from settings."""
+        from beeref.localization import translator
+        
+        language = self.settings.value('General/language', 'en', type=str)
+        translator.set_language(language)
+
+    def build_menu_and_actions(self):
+        """Override to add language initialization after menu is built."""
+        super().build_menu_and_actions()
+        # Only initialize language if not already done
+        if not hasattr(self, '_language_initialized'):
+            self.init_language()
+            self._set_language_checked(self.settings.value('General/language', 'en', type=str))
+            self._language_initialized = True
+
+    def _set_language_checked(self, language):
+        """Set the correct language action as checked."""
+        if hasattr(self, 'bee_actions') and 'language_english' in self.bee_actions:
+            # Temporarily disconnect signals to avoid triggering language change
+            self.bee_actions['language_english'].toggled.disconnect()
+            self.bee_actions['language_russian'].toggled.disconnect()
+            
+            if language == 'en':
+                self.bee_actions['language_english'].setChecked(True)
+                self.bee_actions['language_russian'].setChecked(False)
+            elif language == 'ru':
+                self.bee_actions['language_russian'].setChecked(True)
+                self.bee_actions['language_english'].setChecked(False)
+            
+            # Reconnect signals
+            self.bee_actions['language_english'].toggled.connect(self.on_action_set_language_english)
+            self.bee_actions['language_russian'].toggled.connect(self.on_action_set_language_russian)
+
+    def on_action_set_language_english(self, checked):
+        """Handle English language selection."""
+        if checked:
+            self._set_language('en')
+
+    def on_action_set_language_russian(self, checked):
+        """Handle Russian language selection."""
+        if checked:
+            self._set_language('ru')
+
+    def _set_language(self, language):
+        """Set the application language."""
+        from beeref.localization import translator
+        
+        # Set the language
+        translator.set_language(language)
+        self.settings.setValue('General/language', language)
+        
+        # Update the language action checkboxes
+        if language == 'en':
+            self.bee_actions['language_english'].setChecked(True)
+            self.bee_actions['language_russian'].setChecked(False)
+        else:
+            self.bee_actions['language_russian'].setChecked(True)
+            self.bee_actions['language_english'].setChecked(False)
+        
+        # Update action texts with new language
+        self._update_action_texts()
+        
+        # Update welcome screen if visible
+        if hasattr(self, 'welcome_overlay') and self.welcome_overlay.isVisible():
+            self.welcome_overlay.update_text()
+
+    def _update_action_texts(self):
+        """Update action texts with current language."""
+        from beeref.actions.actions import get_actions
+        from beeref.localization import tr
+        
+        # Get current actions with translations
+        current_actions = get_actions()
+        action_dict = {action['id']: action for action in current_actions}
+        
+        # Update action texts
+        for action_id, action in action_dict.items():
+            if action_id in self.bee_actions:
+                self.bee_actions[action_id].setText(action['text'])
+        
+        # Update menu titles
+        if hasattr(self, 'toplevel_menus'):
+            from beeref.actions.menu_structure import get_menu_structure
+            menu_structure = get_menu_structure()
+            for i, menu in enumerate(self.toplevel_menus):
+                if i < len(menu_structure):
+                    menu.setTitle(menu_structure[i]['menu'])
+
     def on_selection_changed(self):
-        logger.debug('Currently selected items: %s',
-                     len(self.scene.selectedItems(user_only=True)))
-        self.actiongroup_set_enabled('active_when_selection',
-                                     self.scene.has_selection())
-        self.actiongroup_set_enabled('active_when_croppable',
-                                     self.scene.has_croppable_selection())
-        self.viewport().repaint()
+        try:
+            if hasattr(self, 'scene') and self.scene is not None:
+                logger.debug('Currently selected items: %s',
+                             len(self.scene.selectedItems(user_only=True)))
+                self.actiongroup_set_enabled('active_when_selection',
+                                             self.scene.has_selection())
+                self.actiongroup_set_enabled('active_when_croppable',
+                                             self.scene.has_croppable_selection())
+                self.viewport().repaint()
+        except RuntimeError:
+            # Scene object has been deleted, ignore
+            pass
 
     def recalc_scene_rect(self):
         """Resize the scene rectangle so that it is always one view width
