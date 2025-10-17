@@ -15,13 +15,14 @@
 
 from PyQt6 import QtCore, QtWidgets
 from beeref import constants
+from beeref.localization import tr
 from beeref.styles import BeeRefStyles
 
 
 class AboutDialog(QtWidgets.QDialog):
     def __init__(self, parent):
         super().__init__(parent)
-        self.setWindowTitle(f'About {constants.APPNAME}')
+        self.setWindowTitle(tr('about_title'))
         self.setFixedSize(400, 300)
         self.setStyleSheet(BeeRefStyles.get_dialog_style() + BeeRefStyles.get_button_style())
         
@@ -36,7 +37,7 @@ class AboutDialog(QtWidgets.QDialog):
         layout.addWidget(title_label)
         
         # App description
-        desc_label = QtWidgets.QLabel(f"<p>{constants.APPNAME_FULL}</p>")
+        desc_label = QtWidgets.QLabel(f"<p>{tr('about_description')}</p>")
         desc_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         desc_label.setWordWrap(True)
         layout.addWidget(desc_label)
@@ -47,7 +48,7 @@ class AboutDialog(QtWidgets.QDialog):
         layout.addWidget(copyright_label)
         
         # Website link
-        website_label = QtWidgets.QLabel(f"<p><a href='{constants.WEBSITE}' style='{BeeRefStyles.get_html_link_style()}'>Visit the {constants.APPNAME} website</a></p>")
+        website_label = QtWidgets.QLabel(f"<p><a href='{constants.WEBSITE}' style='{BeeRefStyles.get_html_link_style()}'>{tr('about_website')}</a></p>")
         website_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         website_label.setOpenExternalLinks(True)
         layout.addWidget(website_label)
@@ -56,7 +57,7 @@ class AboutDialog(QtWidgets.QDialog):
         layout.addStretch()
         
         # Close button
-        close_button = QtWidgets.QPushButton("Close")
+        close_button = QtWidgets.QPushButton(tr('close_button'))
         close_button.clicked.connect(self.accept)
         close_button.setFixedWidth(100)
         layout.addWidget(close_button, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)

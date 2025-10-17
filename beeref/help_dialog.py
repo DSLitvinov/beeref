@@ -14,13 +14,14 @@
 # along with BeeRef.  If not, see <https://www.gnu.org/licenses/>.
 
 from PyQt6 import QtWidgets
+from beeref.localization import tr
 from beeref.styles import BeeRefStyles
 
 
 class HelpDialog(QtWidgets.QDialog):
     def __init__(self, parent):
         super().__init__(parent)
-        self.setWindowTitle('Help')
+        self.setWindowTitle(tr('help_title'))
         self.setFixedSize(500, 600)
         self.setStyleSheet(BeeRefStyles.get_dialog_style())
         
@@ -30,24 +31,24 @@ class HelpDialog(QtWidgets.QDialog):
         layout.setSpacing(20)
         
         # Controls section
-        controls_title = QtWidgets.QLabel("Controls")
+        controls_title = QtWidgets.QLabel(tr('controls_title'))
         controls_title.setStyleSheet(BeeRefStyles.get_section_title_style())
         layout.addWidget(controls_title)
         
         # Controls intro text
-        controls_intro = QtWidgets.QLabel(f"For more in depth help refer to the <a href='#' style='{BeeRefStyles.get_html_link_style()}'>handbook</a>.")
+        controls_intro = QtWidgets.QLabel(f"{tr('controls_intro')} <a href='#' style='{BeeRefStyles.get_html_link_style()}'>handbook</a>.")
         controls_intro.setWordWrap(True)
         controls_intro.setOpenExternalLinks(False)
         layout.addWidget(controls_intro)
         
-        controls_intro2 = QtWidgets.QLabel("These are BeeRef's most basic controls:")
+        controls_intro2 = QtWidgets.QLabel(tr('controls_intro2'))
         layout.addWidget(controls_intro2)
         
         # Controls table
         controls_table = QtWidgets.QTableWidget()
         controls_table.setRowCount(6)
         controls_table.setColumnCount(2)
-        controls_table.setHorizontalHeaderLabels(["Action", "Input"])
+        controls_table.setHorizontalHeaderLabels([tr('controls_action_header'), tr('controls_input_header')])
         controls_table.horizontalHeader().setStyleSheet("font-weight: bold;")
         controls_table.verticalHeader().setVisible(False)
         controls_table.setShowGrid(False)
@@ -56,12 +57,12 @@ class HelpDialog(QtWidgets.QDialog):
         
         # Populate controls table
         controls_data = [
-            ("Move window", "right click drag"),
-            ("Open menu", "right click"),
-            ("Select images", "left click/drag"),
-            ("Focus images", "double left click"),
-            ("Zoom to pointer", "scroll wheel"),
-            ("Pan Scene", "scroll click drag")
+            (tr('controls_move_window'), tr('controls_input_right_click_drag')),
+            (tr('controls_open_menu'), tr('controls_input_right_click')),
+            (tr('controls_select_images'), tr('controls_input_left_click_drag')),
+            (tr('controls_focus_images'), tr('controls_input_double_left_click')),
+            (tr('controls_zoom_to_pointer'), tr('controls_input_scroll_wheel')),
+            (tr('controls_pan_scene'), tr('controls_input_scroll_click_drag'))
         ]
         
         for i, (action, input_method) in enumerate(controls_data):
@@ -75,23 +76,23 @@ class HelpDialog(QtWidgets.QDialog):
         layout.addWidget(controls_table)
         
         # Additional controls info
-        controls_info = QtWidgets.QLabel(f"To see all controls and set them yourself, check out <a href='#' style='{BeeRefStyles.get_html_link_style()}'>keyboard shortcuts</a> and the <a href='#' style='{BeeRefStyles.get_html_link_style()}'>default shortcuts</a> web page for more details.")
+        controls_info = QtWidgets.QLabel(f"{tr('controls_info')} <a href='#' style='{BeeRefStyles.get_html_link_style()}'>keyboard shortcuts</a> and the <a href='#' style='{BeeRefStyles.get_html_link_style()}'>default shortcuts</a> web page for more details.")
         controls_info.setWordWrap(True)
         controls_info.setOpenExternalLinks(False)
         layout.addWidget(controls_info)
         
         # Support section
-        support_title = QtWidgets.QLabel("Support")
+        support_title = QtWidgets.QLabel(tr('support_title'))
         support_title.setStyleSheet(BeeRefStyles.get_section_title_with_margin_style())
         layout.addWidget(support_title)
         
-        support_text = QtWidgets.QLabel(f"For troubleshooting, please consult the <a href='#' style='{BeeRefStyles.get_html_link_style()}'>FAQ</a>. For additional help, submitting bug reports, suggestions, or anything else you might want to tell us, visit the <a href='#' style='{BeeRefStyles.get_html_link_style()}'>forums</a>.")
+        support_text = QtWidgets.QLabel(f"{tr('support_text')} <a href='#' style='{BeeRefStyles.get_html_link_style()}'>FAQ</a>. For additional help, submitting bug reports, suggestions, or anything else you might want to tell us, visit the <a href='#' style='{BeeRefStyles.get_html_link_style()}'>forums</a>.")
         support_text.setWordWrap(True)
         support_text.setOpenExternalLinks(False)
         layout.addWidget(support_text)
         
         # About link
-        about_link = QtWidgets.QLabel(f"<a href='#' style='{BeeRefStyles.get_html_link_style()}'>About BeeRef</a>")
+        about_link = QtWidgets.QLabel(f"<a href='#' style='{BeeRefStyles.get_html_link_style()}'>{tr('about_link')}</a>")
         about_link.setOpenExternalLinks(False)
         about_link.linkActivated.connect(self.on_about_clicked)
         layout.addWidget(about_link)

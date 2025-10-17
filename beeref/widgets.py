@@ -21,6 +21,7 @@ from PyQt6.QtCore import Qt
 
 from beeref import constants
 from beeref.config import logfile_name, BeeSettings
+from beeref.localization import tr
 from beeref.main_controls import MainControlsMixin
 from beeref.styles import BeeRefStyles
 
@@ -151,6 +152,15 @@ class WelcomeOverlay(MainControlsMixin, QtWidgets.QWidget):
         self.help_link.linkActivated.connect(self.on_help_clicked)
         self.layout.addWidget(self.help_link)
         
+        # Recent files (hidden by default, shown only when there are recent files)
+        self.files_layout = QtWidgets.QVBoxLayout()
+        self.files_layout.addStretch(50)
+        self.recent_files_label = QtWidgets.QLabel()
+        self.files_layout.addWidget(self.recent_files_label)
+        self.files_view = RecentFilesView()
+        self.files_layout.addWidget(self.files_view)
+        self.files_layout.addStretch(50)
+        
         # Initialize with translations
         self.update_text()
         
@@ -158,15 +168,6 @@ class WelcomeOverlay(MainControlsMixin, QtWidgets.QWidget):
         self.layout.addStretch(1)
         
         self.setLayout(self.layout)
-
-        # Recent files (hidden by default, shown only when there are recent files)
-        self.files_layout = QtWidgets.QVBoxLayout()
-        self.files_layout.addStretch(50)
-        self.files_layout.addWidget(
-            QtWidgets.QLabel('<h3>Recent Files</h3>'))
-        self.files_view = RecentFilesView()
-        self.files_layout.addWidget(self.files_view)
-        self.files_layout.addStretch(50)
 
     def on_browse_clicked(self):
         """Handle the browse button click to open file manager."""
@@ -194,6 +195,7 @@ class WelcomeOverlay(MainControlsMixin, QtWidgets.QWidget):
         self.or_text.setText(tr('or_text'))
         self.browse_button.setText(tr('browse_button'))
         self.help_link.setText(f'<a href="#" style="{BeeRefStyles.get_help_link_style()}">{tr("help_link")}</a>')
+        self.recent_files_label.setText(f'<h3>{tr("recent_files")}</h3>')
 
     def show(self):
         files = BeeSettings().get_recent_files(existing_only=True)
@@ -239,7 +241,7 @@ class BeeProgressDialog(QtWidgets.QProgressDialog):
 class DebugLogDialog(QtWidgets.QDialog):
     def __init__(self, parent):
         super().__init__(parent)
-        self.setWindowTitle(f'{constants.APPNAME} Debug Log')
+        self.setWindowTitle(tr('debug_log_title'))
         with open(logfile_name()) as f:
             self.log_txt = f.read()
 
@@ -249,7 +251,7 @@ class DebugLogDialog(QtWidgets.QDialog):
         buttons = QtWidgets.QDialogButtonBox(
             QtWidgets.QDialogButtonBox.StandardButton.Close)
         buttons.rejected.connect(self.reject)
-        self.copy_button = QtWidgets.QPushButton('Co&py To Clipboard')
+        self.copy_button = QtWidgets.QPushButton(tr('copy_to_clipboard'))
         self.copy_button.released.connect(self.copy_to_clipboard)
         buttons.addButton(
             self.copy_button, QtWidgets.QDialogButtonBox.ButtonRole.ActionRole)

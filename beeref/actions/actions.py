@@ -13,7 +13,26 @@
 # You should have received a copy of the GNU General Public License
 # along with BeeRef.  If not, see <https://www.gnu.org/licenses/>.
 
-from beeref.localization import tr
+from beeref.localization import tr, get_available_languages
+
+def _get_language_actions():
+    """Generate language actions dynamically based on available translations."""
+    language_actions = []
+    available_languages = get_available_languages()
+    
+    # Skip template language
+    if 'template' in available_languages:
+        available_languages.remove('template')
+    
+    for lang_code in available_languages:
+        language_actions.append({
+            'id': f'language_{lang_code}',
+            'text': tr(lang_code),
+            'checkable': True,
+            'callback': f'on_action_set_language_{lang_code}',
+        })
+    
+    return language_actions
 
 def get_actions():
     """Get actions with current translations."""
@@ -287,18 +306,8 @@ def get_actions():
         'text': tr('open_settings_dir'),
         'callback': 'on_action_open_settings_dir',
     },
-    {
-        'id': 'language_english',
-        'text': tr('english'),
-        'checkable': True,
-        'callback': 'on_action_set_language_english',
-    },
-    {
-        'id': 'language_russian',
-        'text': tr('russian'),
-        'checkable': True,
-        'callback': 'on_action_set_language_russian',
-    },
+    # Language actions are generated dynamically
+    *_get_language_actions(),
 ]
 
 # For backward compatibility

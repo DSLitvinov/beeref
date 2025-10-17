@@ -536,31 +536,64 @@ class BeeGraphicsView(MainControlsMixin,
 
     def _set_language_checked(self, language):
         """Set the correct language action as checked."""
-        if hasattr(self, 'bee_actions') and 'language_english' in self.bee_actions:
-            # Temporarily disconnect signals to avoid triggering language change
-            self.bee_actions['language_english'].toggled.disconnect()
-            self.bee_actions['language_russian'].toggled.disconnect()
+        if hasattr(self, 'bee_actions'):
+            from beeref.localization import get_available_languages
             
-            if language == 'en':
-                self.bee_actions['language_english'].setChecked(True)
-                self.bee_actions['language_russian'].setChecked(False)
-            elif language == 'ru':
-                self.bee_actions['language_russian'].setChecked(True)
-                self.bee_actions['language_english'].setChecked(False)
+            available_languages = get_available_languages()
+            if 'template' in available_languages:
+                available_languages.remove('template')
             
-            # Reconnect signals
-            self.bee_actions['language_english'].toggled.connect(self.on_action_set_language_english)
-            self.bee_actions['language_russian'].toggled.connect(self.on_action_set_language_russian)
+            # Temporarily disconnect all language action signals
+            for lang_code in available_languages:
+                action_id = f'language_{lang_code}'
+                if action_id in self.bee_actions:
+                    try:
+                        self.bee_actions[action_id].toggled.disconnect()
+                    except TypeError:
+                        # Signal not connected, ignore
+                        pass
+            
+            # Uncheck all language actions first
+            for lang_code in available_languages:
+                action_id = f'language_{lang_code}'
+                if action_id in self.bee_actions:
+                    self.bee_actions[action_id].setChecked(False)
+            
+            # Check the correct language action
+            action_id = f'language_{language}'
+            if action_id in self.bee_actions:
+                self.bee_actions[action_id].setChecked(True)
+            
+            # Reconnect all language action signals
+            for lang_code in available_languages:
+                action_id = f'language_{lang_code}'
+                if action_id in self.bee_actions:
+                    callback = getattr(self, f'on_action_set_language_{lang_code}', None)
+                    if callback:
+                        self.bee_actions[action_id].toggled.connect(callback)
 
-    def on_action_set_language_english(self, checked):
-        """Handle English language selection."""
-        if checked:
-            self._set_language('en')
-
-    def on_action_set_language_russian(self, checked):
-        """Handle Russian language selection."""
-        if checked:
-            self._set_language('ru')
+    def __getattr__(self, name):
+        """Handle dynamic language callback methods."""
+        if name.startswith('on_action_set_language_'):
+            lang_code = name.replace('on_action_set_language_', '')
+            from beeref.localization import get_available_languages
+            
+            available_languages = get_available_languages()
+            if 'template' in available_languages:
+                available_languages.remove('template')
+            
+            if lang_code in available_languages:
+                def language_callback(checked):
+                    """Handle language selection."""
+                    if checked:
+                        self._set_language(lang_code)
+                
+                # Cache the method to avoid repeated lookups
+                setattr(self, name, language_callback)
+                return language_callback
+        
+        # If not a language callback, raise AttributeError
+        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
 
     def _set_language(self, language):
         """Set the application language."""
@@ -570,13 +603,8 @@ class BeeGraphicsView(MainControlsMixin,
         translator.set_language(language)
         self.settings.setValue('General/language', language)
         
-        # Update the language action checkboxes
-        if language == 'en':
-            self.bee_actions['language_english'].setChecked(True)
-            self.bee_actions['language_russian'].setChecked(False)
-        else:
-            self.bee_actions['language_russian'].setChecked(True)
-            self.bee_actions['language_english'].setChecked(False)
+        # Update the language action checkboxes using dynamic system
+        self._set_language_checked(language)
         
         # Update action texts with new language
         self._update_action_texts()

@@ -292,7 +292,7 @@ def test_on_action_save_when_no_filename(save_as_mock, view, imgfilename3x3):
     view.scene.cancel_crop_mode.assert_called_once_with()
 
 
-@patch('beeref.widgets.HelpDialog.show')
+@patch('beeref.help_dialog.HelpDialog.show')
 def test_on_action_help(show_mock, view):
     view.on_action_help()
     show_mock.assert_called_once()

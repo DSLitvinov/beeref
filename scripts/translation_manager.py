@@ -1,69 +1,38 @@
-# This file is part of BeeRef.
-#
-# BeeRef is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# BeeRef is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with BeeRef.  If not, see <https://www.gnu.org/licenses/>.
+#!/usr/bin/env python3
+"""
+Translation management utility for BeeRef.
 
-"""Localization support for BeeRef."""
+This script helps manage translations by:
+- Extracting translation keys from the codebase
+- Creating translation templates
+- Validating translation files
+- Generating translation statistics
+"""
 
+import argparse
 import json
 import logging
-import os
+import re
+import sys
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Set
 
-from PyQt6 import QtCore, QtWidgets
+# Add the project root to the path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
 
-logger = logging.getLogger(__name__)
+# Import translator without PyQt6 dependencies
+import json
+from pathlib import Path
 
-
-class BeeRefTranslator:
-    """Handles translation and localization for BeeRef."""
+class MockTranslator:
+    """Mock translator for script usage without PyQt6."""
     
     def __init__(self):
-        self.translator = QtCore.QTranslator()
-        self.current_language = 'en'
-        self.translations: Dict[str, Dict[str, str]] = {}
-        self.translations_dir = self._get_translations_dir()
-        self._load_translations()
-    
-    def _get_translations_dir(self) -> Path:
-        """Get the directory containing translation files."""
-        # Try to find translations in the package directory first
-        package_dir = Path(__file__).parent
-        translations_dir = package_dir / 'translations'
-        
-        if translations_dir.exists():
-            return translations_dir
-        
-        # Fallback to a translations directory in the project root
-        project_root = package_dir.parent
-        translations_dir = project_root / 'translations'
-        
-        # Create the directory if it doesn't exist
-        translations_dir.mkdir(exist_ok=True)
-        return translations_dir
-    
-    def _load_translations(self):
-        """Load all available translation files."""
         self.translations = {}
-        
-        # Load built-in translations first
+        self.translations_dir = project_root / 'translations'
         self._load_builtin_translations()
-        
-        # Load external translation files
         self._load_external_translations()
-        
-        logger.info(f"Loaded translations for languages: {list(self.translations.keys())}")
     
     def _load_builtin_translations(self):
         """Load built-in translations as fallback."""
@@ -202,51 +171,8 @@ class BeeRefTranslator:
                 with open(translation_file, 'r', encoding='utf-8') as f:
                     translations = json.load(f)
                     self.translations[language_code] = translations
-                    logger.debug(f"Loaded translations for {language_code}")
             except Exception as e:
                 logger.warning(f"Failed to load translation file {translation_file}: {e}")
-    
-    def get_text(self, key: str, language: Optional[str] = None) -> str:
-        """Get translated text for a given key."""
-        if language is None:
-            language = self.current_language
-        
-        # Try the requested language first
-        if language in self.translations and key in self.translations[language]:
-            return self.translations[language][key]
-        
-        # Fallback to English
-        if key in self.translations.get('en', {}):
-            return self.translations['en'][key]
-        
-        # If not found, return the key itself
-        logger.warning(f"Translation key '{key}' not found for language '{language}'")
-        return key
-    
-    def set_language(self, language: str) -> bool:
-        """Set the current language."""
-        if language in self.translations:
-            self.current_language = language
-            logger.info(f"Language set to: {language}")
-            return True
-        else:
-            logger.warning(f"Language '{language}' not available")
-            return False
-    
-    def get_available_languages(self) -> List[str]:
-        """Get list of available languages."""
-        return list(self.translations.keys())
-    
-    def get_language_name(self, language_code: str) -> str:
-        """Get the display name for a language code."""
-        if language_code in self.translations:
-            # Try to get the language name from the translations
-            name_key = f'language_name_{language_code}'
-            if name_key in self.translations[language_code]:
-                return self.translations[language_code][name_key]
-            # Fallback to a generic name
-            return language_code.title()
-        return language_code
     
     def save_translation_template(self, language_code: str = 'template') -> bool:
         """Save a translation template file for a new language."""
@@ -254,36 +180,169 @@ class BeeRefTranslator:
             template_file = self.translations_dir / f'{language_code}.json'
             with open(template_file, 'w', encoding='utf-8') as f:
                 json.dump(self.translations['en'], f, indent=2, ensure_ascii=False)
-            logger.info(f"Translation template saved to {template_file}")
             return True
         except Exception as e:
             logger.error(f"Failed to save translation template: {e}")
             return False
     
-    def reload_translations(self):
-        """Reload all translation files."""
-        self._load_translations()
+    def get_available_languages(self):
+        """Get list of available languages."""
+        return list(self.translations.keys())
+
+translator = MockTranslator()
+
+logger = logging.getLogger(__name__)
 
 
-# Global translator instance
-translator = BeeRefTranslator()
+def extract_translation_keys() -> Set[str]:
+    """Extract all translation keys used in the codebase."""
+    keys = set()
+    
+    # Pattern to match tr('key') or tr("key") calls
+    tr_pattern = re.compile(r'\btr\s*\(\s*[\'"]([^\'"]+)[\'"]\s*\)')
+    
+    # Search in Python files
+    for py_file in project_root.rglob('*.py'):
+        if py_file.name == 'translation_manager.py':
+            continue
+            
+        try:
+            with open(py_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+                matches = tr_pattern.findall(content)
+                keys.update(matches)
+        except Exception as e:
+            logger.warning(f"Could not read {py_file}: {e}")
+    
+    return keys
 
 
-def tr(key: str, language: Optional[str] = None) -> str:
-    """Convenience function to get translated text."""
-    return translator.get_text(key, language)
+def validate_translation_file(file_path: Path, reference_keys: Set[str]) -> Dict[str, List[str]]:
+    """Validate a translation file against reference keys."""
+    issues = {
+        'missing_keys': [],
+        'extra_keys': [],
+        'empty_values': []
+    }
+    
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            translations = json.load(f)
+        
+        # Check for missing keys
+        for key in reference_keys:
+            if key not in translations:
+                issues['missing_keys'].append(key)
+        
+        # Check for extra keys
+        for key in translations:
+            if key not in reference_keys:
+                issues['extra_keys'].append(key)
+        
+        # Check for empty values
+        for key, value in translations.items():
+            if not value or value.strip() == '':
+                issues['empty_values'].append(key)
+                
+    except Exception as e:
+        logger.error(f"Error validating {file_path}: {e}")
+    
+    return issues
 
 
-def set_language(language: str) -> bool:
-    """Convenience function to set the current language."""
-    return translator.set_language(language)
+def generate_translation_template(language_code: str = 'template') -> bool:
+    """Generate a translation template file."""
+    return translator.save_translation_template(language_code)
 
 
-def get_available_languages() -> List[str]:
-    """Convenience function to get available languages."""
-    return translator.get_available_languages()
+def print_translation_stats():
+    """Print statistics about available translations."""
+    available_languages = translator.get_available_languages()
+    reference_keys = extract_translation_keys()
+    
+    print(f"Available languages: {', '.join(available_languages)}")
+    print(f"Total translation keys: {len(reference_keys)}")
+    print()
+    
+    for lang in available_languages:
+        lang_translations = translator.translations.get(lang, {})
+        translated_count = sum(1 for v in lang_translations.values() if v and v.strip())
+        total_count = len(reference_keys)
+        coverage = (translated_count / total_count * 100) if total_count > 0 else 0
+        
+        print(f"{lang}: {translated_count}/{total_count} ({coverage:.1f}%)")
+        
+        # Show missing keys
+        missing = [k for k in reference_keys if k not in lang_translations or not lang_translations[k]]
+        if missing:
+            print(f"  Missing: {', '.join(missing[:5])}{'...' if len(missing) > 5 else ''}")
 
 
-def get_language_name(language_code: str) -> str:
-    """Convenience function to get language display name."""
-    return translator.get_language_name(language_code)
+def validate_all_translations():
+    """Validate all translation files."""
+    reference_keys = extract_translation_keys()
+    translations_dir = project_root / 'translations'
+    
+    if not translations_dir.exists():
+        print("No translations directory found")
+        return
+    
+    print(f"Validating translations against {len(reference_keys)} reference keys...")
+    print()
+    
+    for translation_file in translations_dir.glob('*.json'):
+        if translation_file.name == 'template.json':
+            continue
+            
+        print(f"Validating {translation_file.name}:")
+        issues = validate_translation_file(translation_file, reference_keys)
+        
+        if not any(issues.values()):
+            print("  ✓ All good!")
+        else:
+            if issues['missing_keys']:
+                print(f"  ✗ Missing keys: {len(issues['missing_keys'])}")
+            if issues['extra_keys']:
+                print(f"  ⚠ Extra keys: {len(issues['extra_keys'])}")
+            if issues['empty_values']:
+                print(f"  ✗ Empty values: {len(issues['empty_values'])}")
+        print()
+
+
+def main():
+    parser = argparse.ArgumentParser(description='BeeRef Translation Manager')
+    parser.add_argument('command', choices=['extract', 'template', 'validate', 'stats'],
+                       help='Command to execute')
+    parser.add_argument('--language', '-l', default='template',
+                       help='Language code for template generation')
+    parser.add_argument('--verbose', '-v', action='store_true',
+                       help='Enable verbose output')
+    
+    args = parser.parse_args()
+    
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+    
+    if args.command == 'extract':
+        keys = extract_translation_keys()
+        print("Translation keys found in codebase:")
+        for key in sorted(keys):
+            print(f"  {key}")
+        print(f"\nTotal: {len(keys)} keys")
+    
+    elif args.command == 'template':
+        if generate_translation_template(args.language):
+            print(f"Translation template saved as {args.language}.json")
+        else:
+            print("Failed to generate translation template")
+            sys.exit(1)
+    
+    elif args.command == 'validate':
+        validate_all_translations()
+    
+    elif args.command == 'stats':
+        print_translation_stats()
+
+
+if __name__ == '__main__':
+    main()

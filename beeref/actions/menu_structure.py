@@ -13,9 +13,19 @@
 # You should have received a copy of the GNU General Public License
 # along with BeeRef.  If not, see <https://www.gnu.org/licenses/>.
 
-from beeref.localization import tr
+from beeref.localization import tr, get_available_languages
 
 MENU_SEPARATOR = 0
+
+def _get_language_menu_items():
+    """Generate language menu items dynamically based on available translations."""
+    available_languages = get_available_languages()
+    
+    # Skip template language
+    if 'template' in available_languages:
+        available_languages.remove('template')
+    
+    return [f'language_{lang_code}' for lang_code in available_languages]
 
 def get_menu_structure():
     """Get menu structure with current translations."""
@@ -109,10 +119,7 @@ def get_menu_structure():
         'items': [
             {
                 'menu': tr('language_settings'),
-                'items': [
-                    'language_english',
-                    'language_russian',
-                ],
+                'items': _get_language_menu_items(),
             },
             MENU_SEPARATOR,
             'open_settings_dir',

@@ -813,7 +813,7 @@ def test_mouse_move_event_when_rubberband_new(
     view.scene.rubberband_item.rect().bottomRight().x() == 10
     view.scene.rubberband_item.rect().bottomRight().y() == 20
     assert item.isSelected() is True
-    assert mouse_mock.called_once_with(event)
+    mouse_mock.assert_called_once_with(event)
 
 
 @patch('PyQt6.QtWidgets.QGraphicsScene.mouseMoveEvent')
@@ -837,7 +837,7 @@ def test_mouse_move_event_when_rubberband_not_new(
     view.scene.rubberband_item.rect().bottomRight().x() == 10
     view.scene.rubberband_item.rect().bottomRight().y() == 20
     assert item.isSelected() is True
-    assert mouse_mock.called_once_with(event)
+    mouse_mock.assert_called_once_with(event)
 
 
 @patch('PyQt6.QtWidgets.QGraphicsScene.mouseMoveEvent')
@@ -859,7 +859,7 @@ def test_mouse_move_event_when_no_rubberband(mouse_mock, view, imgfilename3x3):
     view.scene.rubberband_item.rect().bottomRight().x() == 0
     view.scene.rubberband_item.rect().bottomRight().y() == 0
     assert item.isSelected() is False
-    assert mouse_mock.called_once_with(event)
+    mouse_mock.assert_called_once_with(event)
 
 
 @patch('PyQt6.QtWidgets.QGraphicsScene.mouseReleaseEvent')

@@ -12,7 +12,8 @@ a = Analysis(
     binaries=[],
     datas=[
         (join('beeref', 'documentation'), join('beeref', 'documentation')),
-        (join('beeref', 'assets', '*.png'), join('beeref', 'assets'))],
+        (join('beeref', 'assets', '*.png'), join('beeref', 'assets')),
+        (join('translations', '*.json'), join('translations'))],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
