@@ -35,10 +35,6 @@ def get_menu_structure():
         'items': [
             'new_scene',
             'open',
-            {
-                'menu': tr('open_recent'),
-                'items': '_build_recent_files',
-            },
             MENU_SEPARATOR,
             'save',
             'save_as',
@@ -124,6 +120,10 @@ def get_menu_structure():
             MENU_SEPARATOR,
             'open_settings_dir',
         ],
+    },
+    {
+        'menu': tr('open_recent'),
+        'items': '_build_recent_files',
     },
     {
         'menu': tr('help_menu'),

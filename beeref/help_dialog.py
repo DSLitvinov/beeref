@@ -22,7 +22,9 @@ class HelpDialog(QtWidgets.QDialog):
     def __init__(self, parent):
         super().__init__(parent)
         self.setWindowTitle(tr('help_title'))
-        self.setFixedSize(500, 600)
+        self.resize(600, 700)
+        self.setMinimumSize(600, 500)
+        self.setMaximumSize(800, 1000)
         self.setStyleSheet(BeeRefStyles.get_dialog_style())
         
         # Main layout
@@ -44,19 +46,18 @@ class HelpDialog(QtWidgets.QDialog):
         controls_intro2 = QtWidgets.QLabel(tr('controls_intro2'))
         layout.addWidget(controls_intro2)
         
-        # Controls table
-        controls_table = QtWidgets.QTableWidget()
-        controls_table.setRowCount(6)
-        controls_table.setColumnCount(2)
-        controls_table.setHorizontalHeaderLabels([tr('controls_action_header'), tr('controls_input_header')])
-        controls_table.horizontalHeader().setStyleSheet("font-weight: bold;")
-        controls_table.verticalHeader().setVisible(False)
-        controls_table.setShowGrid(False)
-        controls_table.setAlternatingRowColors(False)
-        controls_table.setStyleSheet(BeeRefStyles.get_table_style())
+        # Combined hotkeys table
+        hotkeys_table = QtWidgets.QTableWidget()
+        hotkeys_table.setColumnCount(2)
+        hotkeys_table.setHorizontalHeaderLabels([tr('controls_action_header'), tr('controls_input_header')])
+        hotkeys_table.horizontalHeader().setStyleSheet("font-weight: bold;")
+        hotkeys_table.verticalHeader().setVisible(False)
+        hotkeys_table.setShowGrid(False)
+        hotkeys_table.setAlternatingRowColors(False)
+        hotkeys_table.setStyleSheet(BeeRefStyles.get_table_style())
         
-        # Populate controls table
-        controls_data = [
+        # Mouse controls data
+        mouse_controls_data = [
             (tr('controls_move_window'), tr('controls_input_right_click_drag')),
             (tr('controls_open_menu'), tr('controls_input_right_click')),
             (tr('controls_select_images'), tr('controls_input_left_click_drag')),
@@ -65,15 +66,49 @@ class HelpDialog(QtWidgets.QDialog):
             (tr('controls_pan_scene'), tr('controls_input_scroll_click_drag'))
         ]
         
-        for i, (action, input_method) in enumerate(controls_data):
-            action_item = QtWidgets.QTableWidgetItem(action)
-            input_item = QtWidgets.QTableWidgetItem(f"- {input_method}")
-            controls_table.setItem(i, 0, action_item)
-            controls_table.setItem(i, 1, input_item)
+        # Get keyboard shortcuts from actions
+        from beeref.actions.actions import get_actions
+        from beeref.config import KeyboardSettings
         
-        controls_table.resizeColumnsToContents()
-        controls_table.setMaximumHeight(300)
-        layout.addWidget(controls_table)
+        actions = get_actions()
+        keyboard_settings = KeyboardSettings()
+        
+        keyboard_shortcuts_data = []
+        for action in actions:
+            if 'shortcuts' in action:
+                # Get the actual shortcuts (might be customized)
+                actual_shortcuts = keyboard_settings.get_shortcuts(
+                    'Actions', action['id'], action.get('shortcuts'))
+                if actual_shortcuts:
+                    shortcuts_str = ', '.join(actual_shortcuts)
+                    keyboard_shortcuts_data.append((action['text'], shortcuts_str))
+        
+        # Combine all hotkeys data
+        all_hotkeys_data = []
+        
+        # Add mouse controls first
+        for action, input_method in mouse_controls_data:
+            all_hotkeys_data.append((action, f"- {input_method}"))
+        
+        # Add keyboard shortcuts
+        for action_text, shortcuts_str in keyboard_shortcuts_data:
+            all_hotkeys_data.append((action_text, shortcuts_str))
+        
+        # Sort by action text
+        all_hotkeys_data.sort(key=lambda x: x[0])
+        
+        hotkeys_table.setRowCount(len(all_hotkeys_data))
+        
+        for i, (action_text, input_method) in enumerate(all_hotkeys_data):
+            action_item = QtWidgets.QTableWidgetItem(action_text)
+            input_item = QtWidgets.QTableWidgetItem(input_method)
+            hotkeys_table.setItem(i, 0, action_item)
+            hotkeys_table.setItem(i, 1, input_item)
+        
+        hotkeys_table.resizeColumnsToContents()
+        hotkeys_table.setMaximumHeight(16777215)  # Allow unlimited height
+        hotkeys_table.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
+        layout.addWidget(hotkeys_table)
         
         # Additional controls info
         controls_info = QtWidgets.QLabel(f"{tr('controls_info')} <a href='#' style='{BeeRefStyles.get_html_link_style()}'>keyboard shortcuts</a> and the <a href='#' style='{BeeRefStyles.get_html_link_style()}'>default shortcuts</a> web page for more details.")

@@ -202,9 +202,9 @@ class WelcomeOverlay(MainControlsMixin, QtWidgets.QWidget):
         self.files_view.update_files(files)
         # Show recent files section if there are recent files
         if files and self.layout.indexOf(self.files_layout) < 0:
-            # Insert recent files before the help link
+            # Insert recent files after the help link
             help_index = self.layout.indexOf(self.help_link)
-            self.layout.insertLayout(help_index, self.files_layout)
+            self.layout.insertLayout(help_index + 1, self.files_layout)
         super().show()
 
 

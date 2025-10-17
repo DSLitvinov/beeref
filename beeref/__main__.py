@@ -59,6 +59,18 @@ class BeeRefMainWindow(QtWidgets.QMainWindow):
         else:
             if not self.restoreGeometry(geom):
                 self.resize(default_window_size)
+            else:
+                # Validate restored geometry - ensure it's within reasonable bounds
+                current_size = self.size()
+                min_size = QtCore.QSize(400, 300)  # Minimum reasonable window size
+                max_size = QtCore.QSize(4000, 3000)  # Maximum reasonable window size
+                
+                if (current_size.width() < min_size.width() or 
+                    current_size.height() < min_size.height() or
+                    current_size.width() > max_size.width() or 
+                    current_size.height() > max_size.height()):
+                    # Restored geometry is invalid, use default size
+                    self.resize(default_window_size)
         self.setCentralWidget(self.view)
         self.show()
 
