@@ -105,10 +105,16 @@ class HelpDialog(QtWidgets.QDialog):
             hotkeys_table.setItem(i, 0, action_item)
             hotkeys_table.setItem(i, 1, input_item)
         
-        hotkeys_table.resizeColumnsToContents()
-        hotkeys_table.setMaximumHeight(16777215)  # Allow unlimited height
+        # Set column stretch factors - Action column gets maximum width
+        header = hotkeys_table.horizontalHeader()
+        header.setStretchLastSection(False)  # Disable automatic last section stretching
+        header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.Stretch)  # Action column stretches
+        header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)  # Input column fits content
+        
+        # Set size policy to expand both horizontally and vertically
         hotkeys_table.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
-        layout.addWidget(hotkeys_table)
+        # Set stretch factor to make the table take up available vertical space
+        layout.addWidget(hotkeys_table, 1)  # Stretch factor of 1
         
         # Additional controls info
         controls_info = QtWidgets.QLabel(f"{tr('controls_info')} <a href='#' style='{BeeRefStyles.get_html_link_style()}'>keyboard shortcuts</a> and the <a href='#' style='{BeeRefStyles.get_html_link_style()}'>default shortcuts</a> web page for more details.")
@@ -132,8 +138,6 @@ class HelpDialog(QtWidgets.QDialog):
         about_link.linkActivated.connect(self.on_about_clicked)
         layout.addWidget(about_link)
         
-        # Add stretch to push content to top
-        layout.addStretch()
         
         self.setLayout(layout)
         self.show()
