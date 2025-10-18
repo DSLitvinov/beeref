@@ -3,7 +3,7 @@
 dev = [
     "flake8>=6.0.0",
     "pybadges>=3.0.0",
-    "pyinstaller>=5.9.0",
+    # "pyinstaller>=5.9.0",  # Temporarily disabled for Python 3.13 compatibility
     "yamllint>=1.30.0",
     "coverage>=7.2.2",
     "httpretty>=1.1.4",
@@ -23,10 +23,9 @@ authors = [
     {name = "mini-ninja-64", email = "github@callumh.art"},
 ]
 dependencies = [
-    "exif",
-    "pyQt6-Qt6>=6.4.2",
-    "pyQt6>=6.4.2",
-    "rectangle-packer>=2.0.1"
+    "exif>=1.6.1",
+    "pyQt6-Qt6>=6.9.2",
+    "pyQt6>=6.9.1",
 ]
 license = {text = "LICENSE"}
 requires-python = ">=3.9"

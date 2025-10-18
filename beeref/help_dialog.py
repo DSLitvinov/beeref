@@ -105,11 +105,11 @@ class HelpDialog(QtWidgets.QDialog):
             hotkeys_table.setItem(i, 0, action_item)
             hotkeys_table.setItem(i, 1, input_item)
         
-        # Set column stretch factors - Action column gets maximum width
+        # Set column stretch factors - Both columns stretch to fill entire width
         header = hotkeys_table.horizontalHeader()
         header.setStretchLastSection(False)  # Disable automatic last section stretching
         header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.Stretch)  # Action column stretches
-        header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)  # Input column fits content
+        header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Stretch)  # Input column also stretches
         
         # Set size policy to expand both horizontally and vertically
         hotkeys_table.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
