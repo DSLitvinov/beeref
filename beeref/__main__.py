@@ -109,7 +109,9 @@ def main():
     logger.info(f'Logging to: {logfile_name()}')
     settings.on_startup()
     args = CommandlineArgs(with_check=True)  # Force checking
-    assert not args.debug_raise_error, args.debug_raise_error
+    if args.debug_raise_error:
+        logger.critical(f'DEBUG: Raising error: {args.debug_raise_error}')
+        sys.exit(1)
 
     os.environ["QT_DEBUG_PLUGINS"] = "1"
     app = BeeRefApplication(sys.argv)

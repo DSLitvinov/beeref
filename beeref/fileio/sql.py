@@ -43,9 +43,35 @@ logger = logging.getLogger(__name__)
 
 
 def is_bee_file(path):
-    """Check whether the file at the given path is a bee file."""
-
-    return os.path.splitext(path)[1] == '.bee'
+    """Check whether the file at the given path is a bee file.
+    
+    Checks both the extension and attempts to verify it's a valid SQLite file
+    for additional security.
+    """
+    if not path:
+        return False
+    
+    # Check extension
+    if os.path.splitext(path)[1] != '.bee':
+        return False
+    
+    # Additional security check: verify it's a valid SQLite file
+    # This helps prevent confusion attacks with files renamed to .bee
+    if os.path.exists(path):
+        try:
+            # SQLite files start with specific header bytes
+            with open(path, 'rb') as f:
+                header = f.read(16)
+                # SQLite database file signature
+                if header[:16] != b'SQLite format 3\x00':
+                    logger.warning(f'File {path} has .bee extension but is not a valid SQLite file')
+                    return False
+        except (IOError, OSError) as e:
+            logger.debug(f'Could not read file header: {e}')
+            # If we can't read, allow it (might be new file)
+            pass
+    
+    return True
 
 
 def handle_sqlite_errors(func):
@@ -82,7 +108,17 @@ class SQLiteIO:
         self.worker = worker
         self.retry = False
 
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit - cleanup resources."""
+        self._close_connection()
+        return False  # Don't suppress exceptions
+
     def __del__(self):
+        # Keep __del__ for backward compatibility, but prefer context manager
         self._close_connection()
 
     def _close_connection(self):
@@ -96,27 +132,41 @@ class SQLiteIO:
             delattr(self, '_tmpdir')
 
     def _establish_connection(self):
-        if (self.create_new
-                and not self.readonly
-                and os.path.exists(self.filename)):
-            os.remove(self.filename)
+        # Prevent infinite recursion
+        if hasattr(self, '_establishing_connection') and self._establishing_connection:
+            raise sqlite3.Error('Connection establishment already in progress')
+        self._establishing_connection = True
+        
+        try:
+            if (self.create_new
+                    and not self.readonly
+                    and os.path.exists(self.filename)):
+                os.remove(self.filename)
 
-        if self.create_new:
-            self.scene.clear_save_ids()
+            if self.create_new:
+                self.scene.clear_save_ids()
 
-        uri = pathlib.Path(self.filename).resolve().as_uri()
-        if self.readonly:
-            uri = f'{uri}?mode=rw'
-        self._connection = sqlite3.connect(uri, uri=True)
-        self._cursor = self.connection.cursor()
-        if not self.create_new:
-            try:
-                self._migrate()
-            except Exception:
-                # Updating a file failed; try creating it from scratch instead
-                logger.exception('Error migrating bee file')
-                self.create_new = True
-                self._establish_connection()
+            uri = pathlib.Path(self.filename).resolve().as_uri()
+            if self.readonly:
+                uri = f'{uri}?mode=rw'
+            self._connection = sqlite3.connect(uri, uri=True)
+            self._cursor = self.connection.cursor()
+            if not self.create_new:
+                try:
+                    self._migrate()
+                except Exception:
+                    # Updating a file failed; try creating it from scratch instead
+                    logger.exception('Error migrating bee file')
+                    self.create_new = True
+                    # Clear the connection and retry once
+                    if hasattr(self, '_connection'):
+                        self._connection.close()
+                        delattr(self, '_connection')
+                    if hasattr(self, '_cursor'):
+                        delattr(self, '_cursor')
+                    self._establish_connection()
+        finally:
+            self._establishing_connection = False
 
     def _migrate(self):
         """Migrate database if necessary."""
@@ -130,7 +180,9 @@ class SQLiteIO:
         if self.readonly:
             try:
                 # See whether file is writable so we can migrate it directly
-                self.ex('PRAGMA application_id=%s' % APPLICATION_ID)
+                # Use string formatting for PRAGMA as it doesn't support placeholders
+                # but APPLICATION_ID is a constant, so this is safe
+                self.ex(f'PRAGMA application_id={APPLICATION_ID}')
             except sqlite3.Error:
                 logger.debug('File not writable; use temporary copy instead')
                 self._connection.close()
@@ -177,8 +229,10 @@ class SQLiteIO:
         return self.cursor.fetchall()
 
     def write_meta(self):
-        self.ex('PRAGMA application_id=%s' % APPLICATION_ID)
-        self.ex('PRAGMA user_version=%s' % USER_VERSION)
+        # Use string formatting for PRAGMA as it doesn't support placeholders
+        # but APPLICATION_ID and USER_VERSION are constants, so this is safe
+        self.ex(f'PRAGMA application_id={APPLICATION_ID}')
+        self.ex(f'PRAGMA user_version={USER_VERSION}')
         self.ex('PRAGMA foreign_keys=ON')
 
     def create_schema_on_new(self):
@@ -244,21 +298,32 @@ class SQLiteIO:
         if self.readonly:
             raise sqlite3.OperationalError(
                 'Attempt to write to a readonly database')
-        try:
-            self.create_schema_on_new()
-            self.write_data()
-        except Exception:
-            if self.retry:
-                # Trying to recover failed
-                raise
-            else:
-                self.retry = True
-                # Try creating file from scratch and save again
-                logger.exception(
-                    f'Updating to existing file {self.filename} failed')
-                self.create_new = True
-                self._close_connection()
-                self.write()
+        
+        # Prevent infinite recursion with retry flag
+        max_retries = 2
+        attempts = 0
+        
+        while attempts < max_retries:
+            try:
+                self.create_schema_on_new()
+                self.write_data()
+                break  # Success, exit loop
+            except Exception:
+                attempts += 1
+                if attempts >= max_retries:
+                    # Max retries reached, give up
+                    logger.exception(
+                        f'Failed to write file after {max_retries} attempts')
+                    raise
+                else:
+                    # Retry: try creating file from scratch
+                    logger.warning(
+                        f'Updating existing file failed, retrying ({attempts}/{max_retries})')
+                    self.create_new = True
+                    self._close_connection()
+                    # Re-establish connection for next attempt by accessing connection property
+                    _ = self.connection  # This will trigger _establish_connection()
+                    # Note: self.retry flag is deprecated in favor of attempts counter
 
     def write_data(self):
         to_delete = {row[0] for row in self.fetchall('SELECT id from ITEMS')}

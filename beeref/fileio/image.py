@@ -16,6 +16,7 @@
 import logging
 import os.path
 import tempfile
+import socket
 from urllib.error import URLError
 from urllib import parse, request
 
@@ -27,6 +28,53 @@ import plum
 
 
 logger = logging.getLogger(__name__)
+
+# Security settings
+ALLOWED_SCHEMES = {'http', 'https'}
+ALLOWED_DOMAINS = {'pinterest.com'}  # Whitelist of allowed domains
+DEFAULT_TIMEOUT = 10  # seconds
+
+
+def validate_url(url_string):
+    """Validate URL for security concerns (SSRF protection).
+    
+    Returns:
+        tuple: (is_valid: bool, parsed_url: ParseResult or None)
+    """
+    try:
+        parsed = parse.urlparse(url_string)
+        
+        # Check scheme
+        if parsed.scheme not in ALLOWED_SCHEMES:
+            logger.warning(f'URL has disallowed scheme: {parsed.scheme}')
+            return False, None
+        
+        # Check for localhost/internal IP addresses (SSRF protection)
+        hostname = parsed.hostname
+        if hostname:
+            try:
+                # Check for localhost variants
+                if hostname in ('localhost', '127.0.0.1', '::1', '0.0.0.0'):
+                    logger.warning(f'Blocked localhost URL: {hostname}')
+                    return False, None
+                
+                # Check for private/internal IP ranges
+                addr = socket.gethostbyname(hostname)
+                if addr.startswith('10.') or addr.startswith('192.168.'):
+                    logger.warning(f'Blocked private IP URL: {addr}')
+                    return False, None
+                if addr.startswith('172.') and 16 <= int(addr.split('.')[1]) <= 31:
+                    logger.warning(f'Blocked private IP URL: {addr}')
+                    return False, None
+                    
+            except socket.gaierror:
+                logger.warning(f'Could not resolve hostname: {hostname}')
+                return False, None
+        
+        return True, parsed
+    except Exception as e:
+        logger.warning(f'URL validation failed: {e}')
+        return False, None
 
 
 def exif_rotated_image(path=None):
@@ -90,19 +138,34 @@ def load_image(path):
         return (exif_rotated_image(path), path)
 
     url = bytes(path.toEncoded()).decode()
-    domain = '.'.join(parse.urlparse(url).netloc.split(".")[-2:])
+    
+    # Validate URL for security
+    is_valid, parsed_url = validate_url(url)
+    if not is_valid:
+        logger.warning(f'URL validation failed for: {url}')
+        img = exif_rotated_image()
+        return (img, url)
+    
+    domain = '.'.join(parsed_url.netloc.split(".")[-2:])
     img = exif_rotated_image()
     if domain == 'pinterest.com':
         try:
-            page_data = request.urlopen(url).read()
+            page_data = request.urlopen(url, timeout=DEFAULT_TIMEOUT).read()
             root = etree.HTML(page_data)
             url = root.xpath("//img")[0].get('src')
+            # Re-validate the new URL
+            is_valid, parsed_url = validate_url(url)
+            if not is_valid:
+                logger.warning(f'Pinterest extracted URL validation failed: {url}')
+                return (img, url)
         except Exception as e:
             logger.debug(f'Pinterest image download failed: {e}')
+            return (img, url)
+    
     try:
-        imgdata = request.urlopen(url).read()
-    except URLError as e:
-        logger.debug(f'Downloading image failed: {e.reason}')
+        imgdata = request.urlopen(url, timeout=DEFAULT_TIMEOUT).read()
+    except (URLError, socket.timeout) as e:
+        logger.debug(f'Downloading image failed: {e}')
     else:
         with tempfile.TemporaryDirectory() as tmp:
             fname = os.path.join(tmp, 'img')
