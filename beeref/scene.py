@@ -126,22 +126,34 @@ class BeeGraphicsScene(QtWidgets.QGraphicsScene):
 
         :param mode: "width" or "height".
         """
+        valid_modes = {'width', 'height'}
+        if mode not in valid_modes:
+            raise ValueError(
+                f"mode must be one of {valid_modes}, got '{mode}'")
 
         self.cancel_active_modes()
         values = []
         items = self.selectedItems(user_only=True)
         for item in items:
             rect = self.itemsBoundingRect(items=[item])
-            values.append(getattr(rect, mode)())
+            value = getattr(rect, mode)()
+            if value > 0:  # Skip items with zero width/height
+                values.append(value)
+        
         if len(values) < 2:
             return
+        
         avg = sum(values) / len(values)
         logger.debug(f'Calculated average {mode} {avg}')
 
         scale_factors = []
         for item in items:
             rect = self.itemsBoundingRect(items=[item])
-            scale_factors.append(avg / getattr(rect, mode)())
+            value = getattr(rect, mode)()
+            if value > 0:  # Prevent division by zero
+                scale_factors.append(avg / value)
+            else:
+                scale_factors.append(1.0)  # No scaling for zero-size items
         self.undo_stack.push(
             commands.NormalizeItems(items, scale_factors))
 
@@ -164,7 +176,9 @@ class BeeGraphicsScene(QtWidgets.QGraphicsScene):
         items = self.selectedItems(user_only=True)
         for item in items:
             rect = self.itemsBoundingRect(items=[item])
-            sizes.append(rect.width() * rect.height())
+            area = rect.width() * rect.height()
+            if area > 0:  # Skip items with zero area
+                sizes.append(area)
 
         if len(sizes) < 2:
             return
@@ -175,7 +189,11 @@ class BeeGraphicsScene(QtWidgets.QGraphicsScene):
         scale_factors = []
         for item in items:
             rect = self.itemsBoundingRect(items=[item])
-            scale_factors.append(math.sqrt(avg / rect.width() / rect.height()))
+            area = rect.width() * rect.height()
+            if area > 0:  # Prevent division by zero
+                scale_factors.append(math.sqrt(avg / area))
+            else:
+                scale_factors.append(1.0)  # No scaling for zero-area items
         self.undo_stack.push(
             commands.NormalizeItems(items, scale_factors))
 
@@ -188,6 +206,10 @@ class BeeGraphicsScene(QtWidgets.QGraphicsScene):
             'square': self.arrange_square,
         }
 
+        if default not in MAPPING:
+            logger.warning(f'Unknown arrange mode: {default}, using optimal')
+            default = 'optimal'
+        
         MAPPING[default]()
 
     def arrange(self, vertical=False):
@@ -326,9 +348,13 @@ class BeeGraphicsScene(QtWidgets.QGraphicsScene):
                 item.enter_crop_mode()
 
     def sample_color_at(self, position):
-        item_at_pos = self.itemAt(position, self.views()[0].transform())
+        views = self.views()
+        if not views:
+            return None
+        item_at_pos = self.itemAt(position, views[0].transform())
         if item_at_pos:
             return item_at_pos.sample_color_at(position)
+        return None
 
     def select_all_items(self):
         self.cancel_active_modes()

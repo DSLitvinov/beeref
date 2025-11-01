@@ -78,7 +78,8 @@ def handle_sqlite_errors(func):
     def wrapper(self, *args, **kwargs):
         try:
             func(self, *args, **kwargs)
-        except Exception as e:
+        except (sqlite3.Error, IOError, OSError, ValueError, TypeError) as e:
+            # Catch specific exceptions that can occur during file operations
             logger.exception(f'Error while reading/writing {self.filename}')
             try:
                 # Try to roll back transaction if there is any
@@ -88,6 +89,14 @@ def handle_sqlite_errors(func):
                     logger.debug('Transaction rolled back')
             except sqlite3.Error:
                 pass
+            self._close_connection()
+            if self.worker:
+                self.worker.finished.emit(self.filename, [str(e)])
+            else:
+                raise BeeFileIOError(msg=str(e), filename=self.filename) from e
+        except Exception as e:
+            # Catch any other unexpected exceptions for safety
+            logger.exception(f'Unexpected error while reading/writing {self.filename}')
             self._close_connection()
             if self.worker:
                 self.worker.finished.emit(self.filename, [str(e)])
@@ -154,7 +163,7 @@ class SQLiteIO:
             if not self.create_new:
                 try:
                     self._migrate()
-                except Exception:
+                except (sqlite3.Error, IOError, OSError, ValueError) as e:
                     # Updating a file failed; try creating it from scratch instead
                     logger.exception('Error migrating bee file')
                     self.create_new = True
@@ -308,10 +317,19 @@ class SQLiteIO:
                 self.create_schema_on_new()
                 self.write_data()
                 break  # Success, exit loop
-            except Exception:
+            except (sqlite3.Error, IOError, OSError) as e:
                 attempts += 1
                 if attempts >= max_retries:
-                    # Max retries reached, give up
+                    # Max retries reached, re-raise the exception
+                    raise
+                # Clear connection and retry
+                logger.debug(f'Retry attempt {attempts} after error: {e}')
+                if hasattr(self, '_connection'):
+                    self._connection.close()
+                    delattr(self, '_connection')
+                if hasattr(self, '_cursor'):
+                    delattr(self, '_cursor')
+                self._establish_connection()
                     logger.exception(
                         f'Failed to write file after {max_retries} attempts')
                     raise

@@ -156,7 +156,7 @@ class BeePixmapItem(BeeItemMixin, QtWidgets.QGraphicsPixmapItem):
 
     @grayscale.setter
     def grayscale(self, value):
-        logger.debug('Setting grayscale for {self} to {value}')
+        logger.debug(f'Setting grayscale for {self} to {value}')
         self._grayscale = value
         if value is True:
             # Using the grayscale image format to convert to grayscale
@@ -226,7 +226,10 @@ class BeePixmapItem(BeeItemMixin, QtWidgets.QGraphicsPixmapItem):
 
     def get_filename_for_export(self, imgformat, save_id_default=None):
         save_id = self.save_id or save_id_default
-        assert save_id is not None
+        if save_id is None:
+            raise ValueError(
+                "save_id cannot be None. Item must have save_id set or "
+                "save_id_default must be provided.")
 
         if self.filename:
             basename = os.path.splitext(os.path.basename(self.filename))[0]
