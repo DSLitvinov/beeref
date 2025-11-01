@@ -17,6 +17,7 @@ from functools import partial
 import logging
 import math
 from queue import Queue
+from typing import List, Optional, Dict, Any
 
 from PyQt6 import QtCore, QtWidgets, QtGui
 from PyQt6.QtCore import Qt
@@ -45,7 +46,7 @@ class BeeGraphicsScene(QtWidgets.QGraphicsScene):
         self.undo_stack = undo_stack
         self.max_z = 0
         self.min_z = 0
-        self.Z_STEP = 0.001
+        self.Z_STEP = 0.001  # Step size for z-order operations (raise/lower)
         self.selectionChanged.connect(self.on_selection_change)
         self.changed.connect(self.on_change)
         self.items_to_add = Queue()
@@ -63,11 +64,19 @@ class BeeGraphicsScene(QtWidgets.QGraphicsScene):
         self.multi_select_item = MultiSelectItem()
         self._clear_ongoing = False
 
-    def addItem(self, item):
+    def addItem(self, item: QtWidgets.QGraphicsItem) -> None:
+        """Add item to scene.
+        
+        :param item: Graphics item to add
+        """
         logger.debug(f'Adding item {item}')
         super().addItem(item)
 
-    def removeItem(self, item):
+    def removeItem(self, item: QtWidgets.QGraphicsItem) -> None:
+        """Remove item from scene.
+        
+        :param item: Graphics item to remove
+        """
         logger.debug(f'Removing item {item}')
         super().removeItem(item)
 
@@ -120,7 +129,7 @@ class BeeGraphicsScene(QtWidgets.QGraphicsScene):
         for item in items:
             item.setZValue(item.zValue() + delta)
 
-    def normalize_width_or_height(self, mode):
+    def normalize_width_or_height(self, mode: str) -> None:
         """Scale the selected images to have the same width or height, as
         specified by ``mode``.
 
@@ -157,15 +166,15 @@ class BeeGraphicsScene(QtWidgets.QGraphicsScene):
         self.undo_stack.push(
             commands.NormalizeItems(items, scale_factors))
 
-    def normalize_height(self):
+    def normalize_height(self) -> None:
         """Scale selected images to the same height."""
         return self.normalize_width_or_height('height')
 
-    def normalize_width(self):
+    def normalize_width(self) -> None:
         """Scale selected images to the same width."""
         return self.normalize_width_or_height('width')
 
-    def normalize_size(self):
+    def normalize_size(self) -> None:
         """Scale selected images to the same size.
 
         Size meaning the area = widh * height.
