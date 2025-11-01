@@ -33,6 +33,37 @@ from beeref.widgets import (  # noqa: F401
 logger = logging.getLogger(__name__)
 
 
+class CSDDialog(QtWidgets.QDialog):
+    """Base class for dialogs with Client Side Decorations."""
+    
+    def __init__(self, parent, title: str):
+        super().__init__(parent)
+        
+        # Enable frameless window
+        self.setWindowFlag(Qt.WindowType.FramelessWindowHint, True)
+        
+        # Create and setup central widget with title bar
+        central_widget = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout(central_widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        
+        # Dialog title bar with CSD
+        self.title_bar = titlebar.DialogTitleBar(self)
+        self.title_bar.set_title(title)
+        layout.addWidget(self.title_bar)
+        
+        # Content widget (to be set by subclasses)
+        self.content_widget = QtWidgets.QWidget()
+        self.content_layout = QtWidgets.QVBoxLayout(self.content_widget)
+        self.content_layout.setContentsMargins(10, 10, 10, 10)
+        layout.addWidget(self.content_widget)
+        
+        self.setLayout(QtWidgets.QVBoxLayout())
+        self.layout().setContentsMargins(0, 0, 0, 0)
+        self.layout().addWidget(central_widget)
+
+
 class BeeProgressDialog(QtWidgets.QProgressDialog):
 
     def __init__(self, label, worker, maximum=0, parent=None):
@@ -64,10 +95,9 @@ class BeeProgressDialog(QtWidgets.QProgressDialog):
         QtCore.QTimer.singleShot(100, self.deleteLater)
 
 
-class HelpDialog(QtWidgets.QDialog):
+class HelpDialog(CSDDialog):
     def __init__(self, parent):
-        super().__init__(parent)
-        self.setWindowTitle(f'{constants.APPNAME} Help')
+        super().__init__(parent, f'{constants.APPNAME} Help')
 
         tabs = QtWidgets.QTabWidget()
 
@@ -82,23 +112,20 @@ class HelpDialog(QtWidgets.QDialog):
         scroll.setWidget(controls_label)
         tabs.addTab(scroll, '&Controls')
 
-        layout = QtWidgets.QVBoxLayout()
-        self.setLayout(layout)
-        layout.addWidget(tabs)
+        self.content_layout.addWidget(tabs)
 
         # Bottom row of buttons
         buttons = QtWidgets.QDialogButtonBox(
             QtWidgets.QDialogButtonBox.StandardButton.Close)
         buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
+        self.content_layout.addWidget(buttons)
 
         self.show()
 
 
-class DebugLogDialog(QtWidgets.QDialog):
+class DebugLogDialog(CSDDialog):
     def __init__(self, parent):
-        super().__init__(parent)
-        self.setWindowTitle(f'{constants.APPNAME} Debug Log')
+        super().__init__(parent, f'{constants.APPNAME} Debug Log')
         with open(logfile_name()) as f:
             self.log_txt = f.read()
 
@@ -113,14 +140,12 @@ class DebugLogDialog(QtWidgets.QDialog):
         buttons.addButton(
             self.copy_button, QtWidgets.QDialogButtonBox.ButtonRole.ActionRole)
 
-        layout = QtWidgets.QVBoxLayout()
-        self.setLayout(layout)
         name_widget = QtWidgets.QLabel(logfile_name())
         name_widget.setTextInteractionFlags(
             Qt.TextInteractionFlag.TextSelectableByMouse)
-        layout.addWidget(name_widget)
-        layout.addWidget(self.log)
-        layout.addWidget(buttons)
+        self.content_layout.addWidget(name_widget)
+        self.content_layout.addWidget(self.log)
+        self.content_layout.addWidget(buttons)
         self.show()
 
     def copy_to_clipboard(self):
@@ -337,3 +362,35 @@ class ExportImagesFileExistsDialog(QtWidgets.QDialog):
         for value, btn in self.radio_buttons.items():
             if btn.isChecked():
                 return value
+
+
+class AboutDialog(CSDDialog):
+    """About dialog with CSD."""
+    
+    def __init__(self, parent):
+        super().__init__(parent, f'About {constants.APPNAME}')
+        
+        # About content
+        about_text = (
+            f'<h2>{constants.APPNAME} {constants.VERSION}</h2>'
+            f'<p>{constants.APPNAME_FULL}</p>'
+            f'<p>{constants.COPYRIGHT}</p>'
+            f'<p><a href="{constants.WEBSITE}" '
+            f'style="color: rgb(90, 181, 179);">'
+            f'Visit the {constants.APPNAME} website</a></p>'
+        )
+        label = QtWidgets.QLabel(about_text)
+        label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+            | Qt.TextInteractionFlag.LinksAccessibleByMouse)
+        label.setOpenExternalLinks(True)
+        
+        self.content_layout.addWidget(label, alignment=Qt.AlignmentFlag.AlignCenter)
+        
+        # OK button
+        buttons = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.StandardButton.Ok)
+        buttons.accepted.connect(self.accept)
+        self.content_layout.addWidget(buttons)
+        
+        self.show()

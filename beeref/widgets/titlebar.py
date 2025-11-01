@@ -21,7 +21,7 @@ from typing import Optional
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt
 
-from beeref.constants import COLORS
+from beeref.constants import COLORS, get_csd_button_style, get_csd_close_button_style, get_csd_title_style
 
 
 logger = logging.getLogger(__name__)
@@ -45,21 +45,7 @@ class TitleBarButton(QtWidgets.QPushButton):
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         
         # Style
-        self.setStyleSheet("""
-            QPushButton {
-                border: none;
-                background-color: transparent;
-                color: rgb(200, 200, 200);
-                font-size: 16px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: rgba(255, 255, 255, 20);
-            }
-            QPushButton:pressed {
-                background-color: rgba(255, 255, 255, 30);
-            }
-        """)
+        self.setStyleSheet(get_csd_button_style())
     
     def enterEvent(self, event):
         self._hovered = True
@@ -70,11 +56,32 @@ class TitleBarButton(QtWidgets.QPushButton):
         super().leaveEvent(event)
 
 
-class TitleBar(QtWidgets.QWidget):
-    """Custom title bar with minimize, maximize, and close buttons.
+class CloseButton(QtWidgets.QPushButton):
+    """Close button for CSD title bar with special styling."""
     
-    This widget provides Client Side Decorations (CSD) for frameless windows,
-    including window controls and drag-to-move functionality.
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None):
+        super().__init__(parent)
+        self.setText("✕")
+        self.setToolTip("Close")
+        
+        self.setFixedSize(40, 30)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        
+        # Style with red hover
+        self.setStyleSheet(get_csd_close_button_style())
+    
+    def enterEvent(self, event):
+        super().enterEvent(event)
+    
+    def leaveEvent(self, event):
+        super().leaveEvent(event)
+
+
+class BaseTitleBar(QtWidgets.QWidget):
+    """Base class for all CSD title bars with common functionality.
+    
+    Provides drag-to-move, background painting, and common UI setup.
+    Subclasses should implement _setup_buttons() to add specific buttons.
     """
     
     TITLE_BAR_HEIGHT = 30
@@ -87,6 +94,7 @@ class TitleBar(QtWidgets.QWidget):
         self._drag_position: Optional[QtCore.QPoint] = None
         
         self._setup_ui()
+        self._setup_buttons()
         self._connect_signals()
     
     def _setup_ui(self) -> None:
@@ -99,50 +107,25 @@ class TitleBar(QtWidgets.QWidget):
         layout.setContentsMargins(5, 0, 5, 0)
         layout.setSpacing(0)
         
-        # Title
+        # Title label
         self.title_label = QtWidgets.QLabel()
-        self.title_label.setStyleSheet("""
-            QLabel {
-                color: rgb(200, 200, 200);
-                background-color: transparent;
-                border: none;
-            }
-        """)
+        self.title_label.setStyleSheet(get_csd_title_style())
         layout.addWidget(self.title_label)
         layout.addStretch()
         
-        # Window buttons
-        self.minimize_btn = TitleBarButton("−", "Minimize")
-        self.maximize_btn = TitleBarButton("□", "Maximize")
-        self.close_btn = TitleBarButton("✕", "Close")
+        # Buttons will be added by _setup_buttons() in subclasses
+        self._buttons_layout = layout
+    
+    def _setup_buttons(self) -> None:
+        """Setup buttons. Must be implemented by subclasses.
         
-        # Style close button differently
-        self.close_btn.setStyleSheet("""
-            QPushButton {
-                border: none;
-                background-color: transparent;
-                color: rgb(200, 200, 200);
-                font-size: 16px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: rgba(255, 255, 255, 20);
-                color: white;
-            }
-            QPushButton:pressed {
-                background-color: rgba(255, 255, 255, 20);
-            }
-        """)
-        
-        layout.addWidget(self.minimize_btn)
-        layout.addWidget(self.maximize_btn)
-        layout.addWidget(self.close_btn)
+        Subclasses should add buttons to self._buttons_layout.
+        """
+        raise NotImplementedError("Subclasses must implement _setup_buttons()")
     
     def _connect_signals(self) -> None:
-        """Connect button signals."""
-        self.minimize_btn.clicked.connect(self._on_minimize)
-        self.maximize_btn.clicked.connect(self._on_maximize_restore)
-        self.close_btn.clicked.connect(self._on_close)
+        """Connect button signals. Override in subclasses if needed."""
+        pass
     
     def set_title(self, title: str) -> None:
         """Set the title text.
@@ -150,19 +133,6 @@ class TitleBar(QtWidgets.QWidget):
         :param title: Window title to display
         """
         self.title_label.setText(title)
-    
-    def _on_minimize(self) -> None:
-        """Minimize the window."""
-        self.parent_window.showMinimized()
-    
-    def _on_maximize_restore(self) -> None:
-        """Toggle maximize/restore."""
-        if self.parent_window.isMaximized():
-            self.parent_window.showNormal()
-            self.maximize_btn.setText("□")
-        else:
-            self.parent_window.showMaximized()
-            self.maximize_btn.setText("▢")
     
     def _on_close(self) -> None:
         """Close the window."""
@@ -210,6 +180,10 @@ class TitleBar(QtWidgets.QWidget):
             event.accept()
         super().mouseDoubleClickEvent(event)
     
+    def _on_maximize_restore(self) -> None:
+        """Toggle maximize/restore. Override if not applicable."""
+        pass
+    
     def paintEvent(self, event) -> None:
         """Paint the title bar background.
         
@@ -221,5 +195,53 @@ class TitleBar(QtWidgets.QWidget):
         # Background
         bg_color = QtGui.QColor(*COLORS['Scene:Canvas'])
         painter.fillRect(self.rect(), bg_color)
-        
 
+
+class TitleBar(BaseTitleBar):
+    """Title bar for main windows with minimize, maximize, and close buttons.
+    
+    Provides full window controls for main application windows.
+    """
+    
+    def _setup_buttons(self) -> None:
+        """Setup window control buttons."""
+        # Window buttons
+        self.minimize_btn = TitleBarButton("−", "Minimize")
+        self.maximize_btn = TitleBarButton("□", "Maximize")
+        self.close_btn = CloseButton()
+        
+        self._buttons_layout.addWidget(self.minimize_btn)
+        self._buttons_layout.addWidget(self.maximize_btn)
+        self._buttons_layout.addWidget(self.close_btn)
+    
+    def _connect_signals(self) -> None:
+        """Connect button signals."""
+        self.minimize_btn.clicked.connect(self._on_minimize)
+        self.maximize_btn.clicked.connect(self._on_maximize_restore)
+        self.close_btn.clicked.connect(self._on_close)
+    
+    def _on_minimize(self) -> None:
+        """Minimize the window."""
+        self.parent_window.showMinimized()
+    
+    def _on_maximize_restore(self) -> None:
+        """Toggle maximize/restore."""
+        if self.parent_window.isMaximized():
+            self.parent_window.showNormal()
+            self.maximize_btn.setText("□")
+        else:
+            self.parent_window.showMaximized()
+            self.maximize_btn.setText("▢")
+
+
+class DialogTitleBar(BaseTitleBar):
+    """Simplified title bar for dialogs with only close button."""
+    
+    def _setup_buttons(self) -> None:
+        """Setup close button only."""
+        self.close_btn = CloseButton()
+        self._buttons_layout.addWidget(self.close_btn)
+    
+    def _connect_signals(self) -> None:
+        """Connect button signals."""
+        self.close_btn.clicked.connect(self._on_close)
