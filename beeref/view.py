@@ -267,11 +267,12 @@ class BeeGraphicsView(MainControlsMixin,
             self.parent.setMenuBar(None)
 
     def on_action_show_titlebar(self, checked):
-        self.parent.setWindowFlag(
-            Qt.WindowType.FramelessWindowHint, on=not checked)
-        self.parent.destroy()
-        self.parent.create()
-        self.parent.show()
+        # Show/hide custom CSD title bar
+        if hasattr(self.parent, 'title_bar'):
+            if checked:
+                self.parent.title_bar.show()
+            else:
+                self.parent.title_bar.hide()
 
     def on_action_move_window(self):
         if self.welcome_overlay.isHidden():
