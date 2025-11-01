@@ -321,6 +321,8 @@ class SQLiteIO:
                 attempts += 1
                 if attempts >= max_retries:
                     # Max retries reached, re-raise the exception
+                    logger.exception(
+                        f'Failed to write file after {max_retries} attempts')
                     raise
                 # Clear connection and retry
                 logger.debug(f'Retry attempt {attempts} after error: {e}')
@@ -330,18 +332,6 @@ class SQLiteIO:
                 if hasattr(self, '_cursor'):
                     delattr(self, '_cursor')
                 self._establish_connection()
-                    logger.exception(
-                        f'Failed to write file after {max_retries} attempts')
-                    raise
-                else:
-                    # Retry: try creating file from scratch
-                    logger.warning(
-                        f'Updating existing file failed, retrying ({attempts}/{max_retries})')
-                    self.create_new = True
-                    self._close_connection()
-                    # Re-establish connection for next attempt by accessing connection property
-                    _ = self.connection  # This will trigger _establish_connection()
-                    # Note: self.retry flag is deprecated in favor of attempts counter
 
     def write_data(self):
         to_delete = {row[0] for row in self.fetchall('SELECT id from ITEMS')}

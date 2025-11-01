@@ -52,7 +52,28 @@ class BeeRefMainWindow(QtWidgets.QMainWindow):
         app.setOrganizationName(constants.APPNAME)
         app.setApplicationName(constants.APPNAME)
         self.setWindowIcon(BeeAssets().logo)
+        
+        # Enable frameless window with CSD
+        self.setWindowFlag(QtCore.Qt.WindowType.FramelessWindowHint, True)
+        
+        # Create and setup central widget with title bar
+        central_widget = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout(central_widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        
+        # Title bar with CSD
+        from beeref.widgets import titlebar
+        self.title_bar = titlebar.TitleBar(self)
+        layout.addWidget(self.title_bar)
+        
+        # Main view
         self.view = BeeGraphicsView(app, self)
+        layout.addWidget(self.view)
+        
+        self.setCentralWidget(central_widget)
+        
+        # Setup geometry
         default_window_size = QtCore.QSize(500, 300)
         geom = self.view.settings.value('MainWindow/geometry')
         if geom is None:
@@ -60,13 +81,23 @@ class BeeRefMainWindow(QtWidgets.QMainWindow):
         else:
             if not self.restoreGeometry(geom):
                 self.resize(default_window_size)
-        self.setCentralWidget(self.view)
+        
         self.show()
 
     def closeEvent(self, event):
         geom = self.saveGeometry()
         self.view.settings.setValue('MainWindow/geometry', geom)
         event.accept()
+    
+    def changeEvent(self, event):
+        """Update title bar when window state changes."""
+        super().changeEvent(event)
+        if event.type() == QtCore.QEvent.Type.WindowStateChange:
+            if hasattr(self, 'title_bar'):
+                if self.isMaximized():
+                    self.title_bar.maximize_btn.setText("▢")
+                else:
+                    self.title_bar.maximize_btn.setText("□")
 
     def __del__(self):
         del self.view

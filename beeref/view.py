@@ -128,6 +128,10 @@ class BeeGraphicsView(MainControlsMixin,
             clean = '' if clean else '*'
             title = f'{name}{clean} - {constants.APPNAME}'
         self.parent.setWindowTitle(title)
+        
+        # Update CSD title bar if it exists
+        if hasattr(self.parent, 'title_bar'):
+            self.parent.title_bar.set_title(title)
 
     def on_scene_changed(self, region):
         if not self.scene.items():
