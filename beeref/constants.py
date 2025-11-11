@@ -45,3 +45,27 @@ COLORS = {
     'Scene:Canvas': (60, 60, 60),
     'Scene:Text': (200, 200, 200),
 }
+
+
+def get_welcome_overlay_icon_style():
+    return 'padding: 12px; margin-bottom: 12px;'
+
+
+def get_standard_button_style():
+    highlight = COLORS['Active:Highlight']
+    text = COLORS['Active:ButtonText']
+    return (
+        'QPushButton {'
+        f'color: rgb({text[0]}, {text[1]}, {text[2]});'
+        f'background-color: rgba({highlight[0]}, {highlight[1]}, {highlight[2]}, 0.25);'
+        'padding: 0.6em 2em;'
+        'border: none;'
+        'border-radius: 6px;'
+        '}'
+        'QPushButton:hover {'
+        f'background-color: rgba({highlight[0]}, {highlight[1]}, {highlight[2]}, 0.4);'
+        '}'
+        'QPushButton:pressed {'
+        f'background-color: rgba({highlight[0]}, {highlight[1]}, {highlight[2]}, 0.6);'
+        '}'
+    )

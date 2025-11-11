@@ -19,6 +19,8 @@ import os.path
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt
 
+from beeref import constants
+from beeref.assets import BeeAssets
 from beeref.config import BeeSettings
 from beeref.main_controls import MainControlsMixin
 
@@ -59,12 +61,14 @@ class RecentFilesView(QtWidgets.QListView):
         self.view.open_from_file(self.files[index.row()])
 
     def update_files(self, files):
-        self.files = files
-        self.model().files = files
-        self.reset()
+        self.files = files or []
+        self.setModel(RecentFilesModel(self.files))
+        self.updateGeometry()
 
     def sizeHint(self):
         size = QtCore.QSize()
+        if not self.files:
+            return size
         height = sum(
             (self.sizeHintForRow(i) + 2) for i in range(len(self.files)))
         width = max(self.sizeHintForColumn(i) for i in range(len(self.files)))
@@ -87,56 +91,104 @@ class RecentFilesView(QtWidgets.QListView):
 class WelcomeOverlay(MainControlsMixin, QtWidgets.QWidget):
     """Some basic info to be displayed when the scene is empty."""
 
-    txt = """<p>Paste or drop images here.</p>
-             <p>Right-click for more options.</p>"""
-
     def __init__(self, parent):
         super().__init__(parent)
         self.control_target = parent
         self.setAutoFillBackground(True)
         self.init_main_controls(main_window=parent.parent)
 
+        # Icon
+        icon_path = BeeAssets.PATH.joinpath('icons','drag-and-drop.svg')
+        icon_pixmap = QtGui.QPixmap(str(icon_path))
+        self.icon_label = QtWidgets.QLabel(self)
+        self.icon_label.setPixmap(icon_pixmap)
+        self.icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.icon_label.setStyleSheet(constants.get_welcome_overlay_icon_style())
+
+        # Help text
+        self.label = QtWidgets.QLabel('<p>Paste or drop images here.</p>', self)
+        self.label.setAlignment(Qt.AlignmentFlag.AlignVCenter
+                                | Qt.AlignmentFlag.AlignCenter)
+
+        # Right-click text
+        self.right_click_label = QtWidgets.QLabel('<p>Right-click for more options.</p>', self)
+        self.right_click_label.setAlignment(Qt.AlignmentFlag.AlignVCenter
+                                          | Qt.AlignmentFlag.AlignCenter)
+
+        # Browse button
+        self.browse_button = QtWidgets.QPushButton('Browse', self)
+        self.browse_button.setStyleSheet(constants.get_standard_button_style())
+        self.browse_button.clicked.connect(self.on_browse_clicked)
+
         # Recent files
+        self.files_view = RecentFilesView(self, parent)
         self.files_widget = QtWidgets.QWidget(self)
         files_layout = QtWidgets.QVBoxLayout()
-        files_layout.addStretch(50)
-        files_layout.addWidget(
-            QtWidgets.QLabel('<h3>Recent Files</h3>', self))
-        self.files_view = RecentFilesView(self, parent)
+        files_layout.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        self.recent_files_label = QtWidgets.QLabel('<h3>Recent Files</h3>', self)
+        self.recent_files_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        files_layout.addWidget(self.recent_files_label)
         files_layout.addWidget(self.files_view)
-        files_layout.addStretch(50)
         self.files_widget.setLayout(files_layout)
         self.files_widget.hide()
 
-        # Help text
-        self.label = QtWidgets.QLabel(self.txt, self)
-        self.label.setAlignment(Qt.AlignmentFlag.AlignVCenter
-                                | Qt.AlignmentFlag.AlignCenter)
+        # Center content widget
+        center_widget = QtWidgets.QWidget(self)
+        center_layout = QtWidgets.QVBoxLayout()
+        center_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        center_layout.addStretch()
+        center_layout.addWidget(self.icon_label)
+        center_layout.addWidget(self.label)
+        center_layout.addWidget(self.right_click_label)
+        center_layout.addWidget(self.browse_button)
+        center_layout.setAlignment(self.browse_button, Qt.AlignmentFlag.AlignHCenter)
+        center_layout.addWidget(self.files_widget)
+        center_layout.addStretch()
+        center_widget.setLayout(center_layout)
+
         self.layout = QtWidgets.QHBoxLayout()
-        self.layout.addStretch(50)
-        self.layout.addWidget(self.label)
-        self.layout.addStretch(50)
+        self.layout.addStretch()
+        self.layout.addWidget(center_widget)
+        self.layout.addStretch()
         self.setLayout(self.layout)
 
     def show(self):
         files = BeeSettings().get_recent_files(existing_only=True)
         self.files_view.update_files(files)
-        if files and self.layout.indexOf(self.files_widget) < 0:
-            self.layout.insertWidget(0, self.files_widget)
-            self.files_widget.show()
+        self.files_widget.setVisible(bool(files))
         super().show()
 
     def disable_mouse_events(self):
-        self.files_view.setAttribute(
+        self.icon_label.setAttribute(
             Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.label.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.right_click_label.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.browse_button.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.files_view.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.files_widget.setAttribute(
             Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
     def enable_mouse_events(self):
-        self.files_view.setAttribute(
+        self.icon_label.setAttribute(
             Qt.WidgetAttribute.WA_TransparentForMouseEvents,
             on=False)
         self.label.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents,
+            on=False)
+        self.right_click_label.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents,
+            on=False)
+        self.browse_button.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents,
+            on=False)
+        self.files_view.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents,
+            on=False)
+        self.files_widget.setAttribute(
             Qt.WidgetAttribute.WA_TransparentForMouseEvents,
             on=False)
 
@@ -159,3 +211,7 @@ class WelcomeOverlay(MainControlsMixin, QtWidgets.QWidget):
         if self.keyPressEventMainControls(event):
             return
         super().keyPressEvent(event)
+
+    def on_browse_clicked(self):
+        if hasattr(self.control_target, 'on_action_open'):
+            self.control_target.on_action_open()
