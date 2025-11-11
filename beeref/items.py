@@ -648,6 +648,7 @@ class BeeTextItem(BeeItemMixin, QtWidgets.QGraphicsTextItem):
         self.is_editable = True
         self.edit_mode = False
         self.setDefaultTextColor(QtGui.QColor(*COLORS['Scene:Text']))
+        self.background_color = QtGui.QColor(0, 0, 0, 0)  # Transparent by default
 
     @classmethod
     def create_from_data(cls, **kwargs):
@@ -667,14 +668,27 @@ class BeeTextItem(BeeItemMixin, QtWidgets.QGraphicsTextItem):
 
     def paint(self, painter, option, widget):
         painter.setPen(Qt.PenStyle.NoPen)
-        color = QtGui.QColor(0, 0, 0)
-        color.setAlpha(40)
-        brush = QtGui.QBrush(color)
+        rect = QtWidgets.QGraphicsTextItem.boundingRect(self)
+        
+        # Use background_color if set, otherwise use default semi-transparent black
+        if hasattr(self, 'background_color') and self.background_color.alpha() > 0:
+            brush = QtGui.QBrush(self.background_color)
+        else:
+            color = QtGui.QColor(0, 0, 0)
+            color.setAlpha(40)
+            brush = QtGui.QBrush(color)
+        
         painter.setBrush(brush)
-        painter.drawRect(QtWidgets.QGraphicsTextItem.boundingRect(self))
+        # Draw rounded rectangle with 2px radius
+        painter.drawRoundedRect(rect, 2, 2)
         option.state = QtWidgets.QStyle.StateFlag.State_Enabled
         super().paint(painter, option, widget)
         self.paint_selectable(painter, option, widget)
+    
+    def set_background_color(self, color: QtGui.QColor):
+        """Set the background color for the text item."""
+        self.background_color = color
+        self.update()
 
     def create_copy(self):
         item = BeeTextItem(self.toPlainText())
@@ -684,6 +698,13 @@ class BeeTextItem(BeeItemMixin, QtWidgets.QGraphicsTextItem):
         item.setRotation(self.rotation())
         if self.flip() == -1:
             item.do_flip()
+        # Copy text color
+        item.setDefaultTextColor(self.defaultTextColor())
+        # Copy font
+        item.setFont(self.font())
+        # Copy background color
+        if hasattr(self, 'background_color'):
+            item.set_background_color(self.background_color)
         return item
 
     def enter_edit_mode(self):

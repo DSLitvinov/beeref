@@ -32,6 +32,7 @@ class TextFloatingMenu(FloatingMenu):
         underline_icon = QtGui.QIcon(str(icons_path.joinpath('format-underline.svg')))
         strikethrough_icon = QtGui.QIcon(str(icons_path.joinpath('format-strikethrough.svg')))
         reset_icon = QtGui.QIcon(str(icons_path.joinpath('undo.svg')))
+        fonts_icon = QtGui.QIcon(str(icons_path.joinpath('fonts.svg')))
 
         self.text_color_btn = self.add_button(
             "",
@@ -85,6 +86,9 @@ class TextFloatingMenu(FloatingMenu):
             QtWidgets.QComboBox.InsertPolicy.NoInsert)
         families = QtGui.QFontDatabase.families()
         self.font_combo.addItems(families)
+        # Add icon to all font items
+        for i in range(self.font_combo.count()):
+            self.font_combo.setItemIcon(i, fonts_icon)
         self.font_combo.currentTextChanged.connect(self._on_font_changed)
         self.add_widget(self.font_combo)
 
