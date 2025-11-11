@@ -957,4 +957,12 @@ class BeeGraphicsView(MainControlsMixin,
             self.cancel_sample_color_mode()
             event.accept()
             return
+        # Handle Backspace/Delete for deleting items (especially on macOS)
+        if (event.key() in (Qt.Key.Key_Backspace, Qt.Key.Key_Delete)
+                and event.modifiers() == Qt.KeyboardModifier.NoModifier):
+            selected = self.scene.selectedItems(user_only=True)
+            if selected and not self.scene.edit_item:
+                self.on_action_delete_items()
+                event.accept()
+                return
         super().keyPressEvent(event)
