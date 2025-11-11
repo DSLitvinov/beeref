@@ -14,6 +14,7 @@
 # along with BeeRef.  If not, see <https://www.gnu.org/licenses/>.
 
 from functools import partial
+from typing import Optional
 import logging
 import os
 import os.path
@@ -29,6 +30,8 @@ from beeref import fileio
 from beeref.fileio.errors import IMG_LOADING_ERROR_MSG
 from beeref.fileio.export import exporter_registry, ImagesToDirectoryExporter
 from beeref import widgets
+from beeref.widgets.text_floating_menu import TextFloatingMenu
+from beeref.widgets.image_floating_menu import ImageFloatingMenu
 from beeref.items import BeePixmapItem, BeeTextItem
 from beeref.main_controls import MainControlsMixin
 from beeref.scene import BeeGraphicsScene
@@ -54,6 +57,9 @@ class BeeGraphicsView(MainControlsMixin,
         self.settings = BeeSettings()
         self.keyboard_settings = KeyboardSettings()
         self.welcome_overlay = widgets.welcome_overlay.WelcomeOverlay(self)
+
+        self.image_floating_menu: Optional[ImageFloatingMenu] = None
+        self.text_floating_menu: Optional[TextFloatingMenu] = None
 
         self.setBackgroundBrush(
             QtGui.QBrush(QtGui.QColor(*constants.COLORS['Scene:Canvas'])))
@@ -81,6 +87,9 @@ class BeeGraphicsView(MainControlsMixin,
         self.build_menu_and_actions()
         self.control_target = self
         self.init_main_controls(main_window=parent)
+
+        if parent is not None:
+            self._init_floating_menus(parent)
 
         # Load files given via command line
         if commandline_args.filenames:
@@ -129,6 +138,57 @@ class BeeGraphicsView(MainControlsMixin,
             title = f'{name}{clean} - {constants.APPNAME}'
         self.parent.setWindowTitle(title)
 
+    def _init_floating_menus(self, parent: QtWidgets.QWidget) -> None:
+        self.image_floating_menu = ImageFloatingMenu(parent, self)
+        self.text_floating_menu = TextFloatingMenu(parent, self)
+
+    def _floating_menus(self):
+        return [
+            menu
+            for menu in (self.image_floating_menu, self.text_floating_menu)
+            if menu is not None
+        ]
+
+    def _hide_all_floating_menus(self) -> None:
+        for menu in self._floating_menus():
+            menu.hide_menu()
+
+    def _update_floating_menus_on_selection(self) -> None:
+        if not self._floating_menus():
+            return
+
+        if self.scene.has_single_selection():
+            item = self.scene.selectedItems(user_only=True)[0]
+            if isinstance(item, BeeTextItem) and self.text_floating_menu:
+                if self.image_floating_menu:
+                    self.image_floating_menu.hide_menu()
+                self.text_floating_menu.show_for_item(item)
+            elif getattr(item, 'is_image', False) and self.image_floating_menu:
+                if self.text_floating_menu:
+                    self.text_floating_menu.hide_menu()
+                self.image_floating_menu.show_for_item(item)
+            else:
+                self._hide_all_floating_menus()
+        else:
+            self._hide_all_floating_menus()
+
+    def update_floating_menus_position(self) -> None:
+        for menu in self._floating_menus():
+            menu.update_position()
+
+    def _refresh_visible_floating_menu(self) -> None:
+        if not self.scene.has_single_selection():
+            return
+        item = self.scene.selectedItems(user_only=True)[0]
+        if (isinstance(item, BeeTextItem)
+                and self.text_floating_menu
+                and self.text_floating_menu.isVisible()):
+            self.text_floating_menu.show_for_item(item)
+        elif (getattr(item, 'is_image', False)
+              and self.image_floating_menu
+              and self.image_floating_menu.isVisible()):
+            self.image_floating_menu.show_for_item(item)
+
     def on_scene_changed(self, region):
         if not self.scene.items():
             logger.debug('No items in scene')
@@ -137,6 +197,7 @@ class BeeGraphicsView(MainControlsMixin,
             self.clearFocus()
             self.welcome_overlay.show()
             self.actiongroup_set_enabled('active_when_items_in_scene', False)
+            self._hide_all_floating_menus()
         else:
             self.setFocus()
             self.welcome_overlay.clearFocus()
@@ -382,6 +443,88 @@ class BeeGraphicsView(MainControlsMixin,
 
     def on_action_show_color_gamut(self):
         widgets.color_gamut.GamutDialog(self, self.scene.selectedItems()[0])
+
+    # ------------------------------------------------------------------
+    # Text helpers used by floating menus
+    def _selected_text_items(self):
+        return [
+            item for item in self.scene.selectedItems(user_only=True)
+            if isinstance(item, BeeTextItem)
+        ]
+
+    def change_selected_text_color(self):
+        items = self._selected_text_items()
+        if not items:
+            return
+        initial = items[0].defaultTextColor()
+        color = QtWidgets.QColorDialog.getColor(
+            initial, self, 'Select text color'
+        )
+        if not color.isValid():
+            return
+        for item in items:
+            item.setDefaultTextColor(color)
+            item.update()
+        self._refresh_visible_floating_menu()
+
+    def change_selected_text_background(self):
+        items = self._selected_text_items()
+        if not items:
+            return
+        initial = getattr(items[0], 'background_color', QtGui.QColor(0, 0, 0, 0))
+        color = QtWidgets.QColorDialog.getColor(
+            initial, self, 'Select background color',
+            options=QtWidgets.QColorDialog.ColorDialogOption.ShowAlphaChannel
+        )
+        if not color.isValid():
+            return
+        for item in items:
+            if hasattr(item, 'set_background_color'):
+                item.set_background_color(color)
+        self._refresh_visible_floating_menu()
+
+    def change_selected_text_size(self, size: int):
+        if size <= 0:
+            return
+        items = self._selected_text_items()
+        for item in items:
+            font = item.font()
+            font.setPointSize(size)
+            item.setFont(font)
+        self._refresh_visible_floating_menu()
+
+    def change_selected_text_font(self, family: str):
+        items = self._selected_text_items()
+        for item in items:
+            new_font = item.font()
+            new_font.setFamily(family)
+            item.setFont(new_font)
+        self._refresh_visible_floating_menu()
+
+    def toggle_selected_text_bold(self):
+        items = self._selected_text_items()
+        if not items:
+            return
+        first_font = items[0].font()
+        is_bold = first_font.weight() >= QtGui.QFont.Weight.Bold
+        target_weight = (QtGui.QFont.Weight.Normal
+                         if is_bold else QtGui.QFont.Weight.Bold)
+        for item in items:
+            font = item.font()
+            font.setWeight(target_weight)
+            item.setFont(font)
+        self._refresh_visible_floating_menu()
+
+    def toggle_selected_text_italic(self):
+        items = self._selected_text_items()
+        if not items:
+            return
+        is_italic = items[0].font().italic()
+        for item in items:
+            font = item.font()
+            font.setItalic(not is_italic)
+            item.setFont(font)
+        self._refresh_visible_floating_menu()
 
     def on_action_sample_color(self):
         self.cancel_active_modes()
@@ -730,6 +873,7 @@ class BeeGraphicsView(MainControlsMixin,
             grayscale = getattr(item, 'grayscale', False)
             actions.actions['grayscale'].qaction.setChecked(grayscale)
         self.viewport().repaint()
+        self._update_floating_menus_on_selection()
 
     def on_cursor_changed(self, cursor):
         if self.active_mode is None:
@@ -949,6 +1093,7 @@ class BeeGraphicsView(MainControlsMixin,
         super().resizeEvent(event)
         self.recalc_scene_rect()
         self.welcome_overlay.resize(self.size())
+        self.update_floating_menus_position()
 
     def keyPressEvent(self, event):
         if self.keyPressEventMainControls(event):
