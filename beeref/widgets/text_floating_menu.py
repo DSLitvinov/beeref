@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from PyQt6 import QtGui, QtWidgets
 
+from beeref.assets import BeeAssets
 from beeref.widgets.floating_menu import FloatingMenu
 
 if TYPE_CHECKING:
@@ -21,24 +22,51 @@ class TextFloatingMenu(FloatingMenu):
     def __init__(self, parent: QtWidgets.QWidget, view: "BeeGraphicsView"):
         super().__init__(parent, view)
 
+        # Load icons
+        assets = BeeAssets()
+        icons_path = assets.PATH.joinpath('icons')
+        text_color_icon = QtGui.QIcon(str(icons_path.joinpath('format-color-text.svg')))
+        palette_icon = QtGui.QIcon(str(icons_path.joinpath('palette.svg')))
+        bold_icon = QtGui.QIcon(str(icons_path.joinpath('format-bold.svg')))
+        italic_icon = QtGui.QIcon(str(icons_path.joinpath('format-italic.svg')))
+        underline_icon = QtGui.QIcon(str(icons_path.joinpath('format-underline.svg')))
+        strikethrough_icon = QtGui.QIcon(str(icons_path.joinpath('format-strikethrough.svg')))
+        reset_icon = QtGui.QIcon(str(icons_path.joinpath('undo.svg')))
+
         self.text_color_btn = self.add_button(
-            "A",
+            "",
+            icon=text_color_icon,
             callback=self._on_text_color_clicked,
         )
         self.background_btn = self.add_button(
-            "Bg",
+            "",
+            icon=palette_icon,
             callback=self._on_background_clicked,
         )
         self.add_separator()
 
         self.bold_btn = self.add_button(
-            "B",
+            "",
+            icon=bold_icon,
             callback=self._on_bold_clicked,
             checkable=True,
         )
         self.italic_btn = self.add_button(
-            "I",
+            "",
+            icon=italic_icon,
             callback=self._on_italic_clicked,
+            checkable=True,
+        )
+        self.underline_btn = self.add_button(
+            "",
+            icon=underline_icon,
+            callback=self._on_underline_clicked,
+            checkable=True,
+        )
+        self.strikethrough_btn = self.add_button(
+            "",
+            icon=strikethrough_icon,
+            callback=self._on_strikethrough_clicked,
             checkable=True,
         )
         self.add_separator()
@@ -63,8 +91,9 @@ class TextFloatingMenu(FloatingMenu):
         self.add_separator()
 
         self.add_button(
-            "Delete",
-            callback=self.view.on_action_delete_items,
+            "",
+            icon=reset_icon,
+            callback=self.view.reset_selected_text_format,
         )
 
     # ------------------------------------------------------------------
@@ -78,6 +107,8 @@ class TextFloatingMenu(FloatingMenu):
     def _update_font_controls(self, font: QtGui.QFont) -> None:
         self.bold_btn.setChecked(font.weight() >= QtGui.QFont.Weight.Bold)
         self.italic_btn.setChecked(font.italic())
+        self.underline_btn.setChecked(font.underline())
+        self.strikethrough_btn.setChecked(font.strikeOut())
 
         size = font.pointSize()
         if size == -1:
@@ -126,6 +157,12 @@ class TextFloatingMenu(FloatingMenu):
 
     def _on_italic_clicked(self) -> None:
         self.view.toggle_selected_text_italic()
+
+    def _on_underline_clicked(self) -> None:
+        self.view.toggle_selected_text_underline()
+
+    def _on_strikethrough_clicked(self) -> None:
+        self.view.toggle_selected_text_strikethrough()
 
     def _on_size_changed(self, index: int) -> None:
         size = self.size_combo.currentData()

@@ -526,6 +526,47 @@ class BeeGraphicsView(MainControlsMixin,
             item.setFont(font)
         self._refresh_visible_floating_menu()
 
+    def toggle_selected_text_underline(self):
+        items = self._selected_text_items()
+        if not items:
+            return
+        is_underline = items[0].font().underline()
+        for item in items:
+            font = item.font()
+            font.setUnderline(not is_underline)
+            item.setFont(font)
+        self._refresh_visible_floating_menu()
+
+    def toggle_selected_text_strikethrough(self):
+        items = self._selected_text_items()
+        if not items:
+            return
+        is_strikethrough = items[0].font().strikeOut()
+        for item in items:
+            font = item.font()
+            font.setStrikeOut(not is_strikethrough)
+            item.setFont(font)
+        self._refresh_visible_floating_menu()
+
+    def reset_selected_text_format(self):
+        """Reset text formatting to default values."""
+        from beeref import constants
+        items = self._selected_text_items()
+        if not items:
+            return
+        default_color = QtGui.QColor(*constants.COLORS['Scene:Text'])
+        default_font = QtGui.QFont()
+        for item in items:
+            # Reset text color
+            item.setDefaultTextColor(default_color)
+            # Reset background color if attribute exists
+            if hasattr(item, 'set_background_color'):
+                item.set_background_color(QtGui.QColor(0, 0, 0, 0))
+            # Reset font to default
+            item.setFont(default_font)
+            item.update()
+        self._refresh_visible_floating_menu()
+
     def on_action_sample_color(self):
         self.cancel_active_modes()
         logger.debug('Entering sample color mode')
