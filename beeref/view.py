@@ -1149,6 +1149,6 @@ class BeeGraphicsView(MainControlsMixin,
             selected = self.scene.selectedItems(user_only=True)
             if selected and not self.scene.edit_item:
                 self.on_action_delete_items()
-                event.accept()
-                return
+            event.accept()
+            return
         super().keyPressEvent(event)
