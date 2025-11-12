@@ -457,11 +457,10 @@ class BeeGraphicsView(MainControlsMixin,
         if not items:
             return
         initial = items[0].defaultTextColor()
-        color = QtWidgets.QColorDialog.getColor(
-            initial, self, 'Select text color'
-        )
-        if not color.isValid():
+        dialog = widgets.color_picker.ColorPickerDialog(self, initial)
+        if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
             return
+        color = dialog.selectedColor()
         for item in items:
             item.setDefaultTextColor(color)
             item.update()
@@ -472,12 +471,10 @@ class BeeGraphicsView(MainControlsMixin,
         if not items:
             return
         initial = getattr(items[0], 'background_color', QtGui.QColor(0, 0, 0, 0))
-        color = QtWidgets.QColorDialog.getColor(
-            initial, self, 'Select background color',
-            options=QtWidgets.QColorDialog.ColorDialogOption.ShowAlphaChannel
-        )
-        if not color.isValid():
+        dialog = widgets.color_picker.ColorPickerDialog(self, initial)
+        if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
             return
+        color = dialog.selectedColor()
         for item in items:
             if hasattr(item, 'set_background_color'):
                 item.set_background_color(color)
