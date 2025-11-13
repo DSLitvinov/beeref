@@ -156,20 +156,33 @@ def get_floating_menu_combo_style():
             color: {_css_color(active_color)};
             border: 1px solid rgba({border_r}, {border_g}, {border_b}, 160);
             border-radius: 4px;
-            padding: 4px 10px;
-            min-width: 70px;
+            padding: 4px 12px;
+            min-width: 20px;
         }}
 
         QWidget#FloatingMenu QComboBox::drop-down,
         QWidget#FloatingMenu QFontComboBox::drop-down {{
             border: none;
-            width: 14px;
+            width: 16px;
         }}
 
         QWidget#FloatingMenu QComboBox::down-arrow,
         QWidget#FloatingMenu QFontComboBox::down-arrow {{
             image: none;
             border: none;
+        }}
+
+        QWidget#FloatingMenu QComboBox QAbstractItemView,
+        QWidget#FloatingMenu QFontComboBox QAbstractItemView {{
+            min-width: 152px;
+        }}
+
+        QWidget#FloatingMenu QComboBox#FloatingMenuFontSize QAbstractItemView {{
+            min-width: 80px;
+        }}
+
+        QWidget#FloatingMenu QComboBox#FloatingMenuGifSpeed QAbstractItemView {{
+            min-width: 80px;
         }}
     """
 

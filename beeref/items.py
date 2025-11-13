@@ -847,6 +847,7 @@ class BeeGifItem(BeeItemMixin, QtWidgets.QGraphicsPixmapItem):
         self.is_playing = False
         self.current_frame = 0
         self.frame_count = 0
+        self.speed = 1.0  # Скорость воспроизведения (1.0 = нормальная)
         
         if filename:
             self.load_gif(filename)
@@ -861,6 +862,9 @@ class BeeGifItem(BeeItemMixin, QtWidgets.QGraphicsPixmapItem):
         
         self.movie = QtGui.QMovie(filename)
         self.movie.setCacheMode(QtGui.QMovie.CacheMode.CacheAll)
+        
+        # Устанавливаем скорость воспроизведения
+        self.movie.setSpeed(int(self.speed * 100))
         
         # Подключаем сигнал обновления кадра
         self.movie.frameChanged.connect(self.on_frame_changed)
@@ -925,6 +929,23 @@ class BeeGifItem(BeeItemMixin, QtWidgets.QGraphicsPixmapItem):
             self.is_playing = False
             self.movie.setPaused(True)
             logger.debug(f'Paused GIF: {self.filename}')
+
+    def set_speed(self, speed):
+        """Устанавливает скорость воспроизведения анимации.
+        
+        :param speed: Скорость воспроизведения (0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0)
+        """
+        if not self.movie:
+            return
+        
+        self.speed = speed
+        # QMovie.setSpeed принимает процент от нормальной скорости (100 = 1.0x)
+        self.movie.setSpeed(int(speed * 100))
+        logger.debug(f'Set GIF speed to {speed}x: {self.filename}')
+
+    def get_speed(self):
+        """Возвращает текущую скорость воспроизведения."""
+        return self.speed
 
     def previous_frame(self):
         """Переходит к предыдущему кадру."""
