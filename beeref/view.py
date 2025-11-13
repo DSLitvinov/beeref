@@ -481,7 +481,7 @@ class BeeGraphicsView(MainControlsMixin,
         self._refresh_visible_floating_menu()
 
     def change_selected_text_size(self, size: int):
-        if size <= 0:
+        if size <= 0 or size > 1000:  # Reasonable upper limit
             return
         items = self._selected_text_items()
         for item in items:
@@ -849,7 +849,8 @@ class BeeGraphicsView(MainControlsMixin,
         # At the moment, we can only copy one image to the global
         # clipboard. (Later, we might create an image of the whole
         # selection for external copying.)
-        items[0].copy_to_clipboard(clipboard)
+        if items:
+            items[0].copy_to_clipboard(clipboard)
 
         # However, we can copy all items to the internal clipboard:
         self.scene.copy_selection_to_internal_clipboard()

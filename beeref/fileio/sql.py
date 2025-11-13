@@ -81,6 +81,7 @@ class SQLiteIO:
         self.readonly = readonly
         self.worker = worker
         self.retry = False
+        self._migration_retry_count = 0
 
     def __del__(self):
         self._close_connection()
@@ -115,6 +116,10 @@ class SQLiteIO:
             except Exception:
                 # Updating a file failed; try creating it from scratch instead
                 logger.exception('Error migrating bee file')
+                self._migration_retry_count += 1
+                if self._migration_retry_count > 1:
+                    # Prevent infinite recursion
+                    raise
                 self.create_new = True
                 self._establish_connection()
 

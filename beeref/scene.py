@@ -141,7 +141,12 @@ class BeeGraphicsScene(QtWidgets.QGraphicsScene):
         scale_factors = []
         for item in items:
             rect = self.itemsBoundingRect(items=[item])
-            scale_factors.append(avg / getattr(rect, mode)())
+            dimension = getattr(rect, mode)()
+            if dimension > 0:
+                scale_factors.append(avg / dimension)
+            else:
+                # Skip items with zero width or height
+                scale_factors.append(1.0)
         self.undo_stack.push(
             commands.NormalizeItems(items, scale_factors))
 
@@ -175,7 +180,11 @@ class BeeGraphicsScene(QtWidgets.QGraphicsScene):
         scale_factors = []
         for item in items:
             rect = self.itemsBoundingRect(items=[item])
-            scale_factors.append(math.sqrt(avg / rect.width() / rect.height()))
+            if rect.width() > 0 and rect.height() > 0:
+                scale_factors.append(math.sqrt(avg / rect.width() / rect.height()))
+            else:
+                # Skip items with zero width or height
+                scale_factors.append(1.0)
         self.undo_stack.push(
             commands.NormalizeItems(items, scale_factors))
 
@@ -445,14 +454,13 @@ class BeeGraphicsScene(QtWidgets.QGraphicsScene):
 
         items = super().selectedItems()
         if user_only:
-            return list(filter(lambda i: hasattr(i, 'save_id'), items))
+            return [i for i in items if hasattr(i, 'save_id')]
         return items
 
     def items_by_type(self, itype):
         """Returns all items of the given type."""
 
-        return filter(lambda i: getattr(i, 'TYPE', None) == itype,
-                      self.items())
+        return (i for i in self.items() if getattr(i, 'TYPE', None) == itype)
 
     def items_for_save(self):
 
@@ -461,8 +469,8 @@ class BeeGraphicsScene(QtWidgets.QGraphicsScene):
         Items to be saved are items that have a save_id attribute.
         """
 
-        return filter(lambda i: hasattr(i, 'save_id'),
-                      self.items(order=Qt.SortOrder.AscendingOrder))
+        return (i for i in self.items(order=Qt.SortOrder.AscendingOrder)
+                if hasattr(i, 'save_id'))
 
     def clear_save_ids(self):
         for item in self.items_for_save():
@@ -480,7 +488,7 @@ class BeeGraphicsScene(QtWidgets.QGraphicsScene):
         """
 
         def filter_user_items(ilist):
-            return list(filter(lambda i: hasattr(i, 'save_id'), ilist))
+            return [i for i in ilist if hasattr(i, 'save_id')]
 
         if selection_only:
             base = filter_user_items(self.selectedItems())
