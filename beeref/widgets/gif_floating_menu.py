@@ -2,16 +2,20 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import logging
+from typing import TYPE_CHECKING, Optional
 
 from PyQt6 import QtWidgets
 
 from beeref import constants
 from beeref.widgets.floating_menu import FloatingMenu
 
+logger = logging.getLogger(__name__)
+
 if TYPE_CHECKING:  # pragma: no cover
     from beeref.view import BeeGraphicsView
     from beeref.items import BeeGifItem
+    from beeref.widgets.gif_frames_menu import GifFramesMenu
 
 
 class GifFloatingMenu(FloatingMenu):
@@ -21,6 +25,15 @@ class GifFloatingMenu(FloatingMenu):
 
     def __init__(self, parent: QtWidgets.QWidget, view: "BeeGraphicsView"):
         super().__init__(parent, view)
+        
+        # Инициализируем меню кадров после создания виджета
+        self.frames_menu: Optional["GifFramesMenu"] = None
+        try:
+            from beeref.widgets.gif_frames_menu import GifFramesMenu
+            self.frames_menu = GifFramesMenu(parent, view, self)
+        except Exception as e:
+            logger.warning(f'Failed to initialize frames menu: {e}')
+            self.frames_menu = None
 
         # Combobox для выбора скорости воспроизведения
         self.speed_combo = QtWidgets.QComboBox(self)
@@ -68,12 +81,22 @@ class GifFloatingMenu(FloatingMenu):
         )
         self.next_frame_btn.setToolTip("Next frame")
 
+        # Кнопка для открытия меню кадров
+        self.frames_btn = self.add_button(
+            "📋",
+            callback=self.on_toggle_frames_menu,
+        )
+        self.frames_btn.setToolTip("Show frames timeline")
+
     def show_for_item(self, item: "BeeGifItem") -> None:
         super().show_for_item(item)
         # Обновляем состояние кнопки Play/Pause
         self.update_play_pause_button()
         # Обновляем скорость воспроизведения в combobox
         self.update_speed_combo()
+        # Скрываем меню кадров при показе основного меню
+        if self.frames_menu:
+            self.frames_menu.hide_menu()
 
     def update_speed_combo(self) -> None:
         """Обновляет значение скорости в combobox в соответствии с текущим элементом."""
@@ -114,10 +137,33 @@ class GifFloatingMenu(FloatingMenu):
         if self.current_item and hasattr(self.current_item, 'previous_frame'):
             self.current_item.previous_frame()
             self.update_play_pause_button()
+            # Обновляем выделение в меню кадров если оно открыто
+            if self.frames_menu and self.frames_menu.isVisible():
+                self.frames_menu.load_frames(self.current_item)
 
     def on_next_frame(self) -> None:
         """Переходит к следующему кадру."""
         if self.current_item and hasattr(self.current_item, 'next_frame'):
             self.current_item.next_frame()
             self.update_play_pause_button()
+            # Обновляем выделение в меню кадров если оно открыто
+            if self.frames_menu and self.frames_menu.isVisible():
+                self.frames_menu.load_frames(self.current_item)
+
+    def on_toggle_frames_menu(self) -> None:
+        """Переключает видимость меню кадров."""
+        if self.current_item and self.frames_menu:
+            self.frames_menu.toggle_menu(self.current_item)
+
+    def hide_menu(self) -> None:
+        """Скрывает меню и меню кадров."""
+        if self.frames_menu:
+            self.frames_menu.hide_menu()
+        super().hide_menu()
+
+    def update_position(self) -> None:
+        """Обновляет позицию меню и меню кадров."""
+        super().update_position()
+        if self.frames_menu and self.frames_menu.isVisible():
+            self.frames_menu.update_position()
 

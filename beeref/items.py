@@ -1081,6 +1081,58 @@ class BeeGifItem(BeeItemMixin, QtWidgets.QGraphicsPixmapItem):
             item.do_flip()
         return item
 
+    def get_frame_pixmap(self, frame_number: int):
+        """Получает pixmap указанного кадра.
+        
+        :param frame_number: Номер кадра (начиная с 0)
+        :return: QPixmap кадра или None если кадр недоступен
+        """
+        if not self.movie or frame_number < 0 or frame_number >= self.frame_count:
+            return None
+        
+        was_playing = self.is_playing
+        if was_playing:
+            self.pause_animation()
+        
+        current_frame = self.current_frame
+        pixmap = None
+        if self.movie.jumpToFrame(frame_number):
+            pixmap = self.movie.currentPixmap()
+            # Восстанавливаем текущий кадр
+            self.movie.jumpToFrame(current_frame)
+        
+        if was_playing:
+            self.play_animation()
+        
+        return pixmap
+    
+    def get_frame_delay(self, frame_number: int):
+        """Получает задержку указанного кадра в миллисекундах.
+        
+        :param frame_number: Номер кадра (начиная с 0)
+        :return: Задержка в миллисекундах
+        """
+        if not self.movie or frame_number < 0 or frame_number >= self.frame_count:
+            return 100  # Значение по умолчанию
+        
+        was_playing = self.is_playing
+        if was_playing:
+            self.pause_animation()
+        
+        current_frame = self.current_frame
+        delay = 100
+        if self.movie.jumpToFrame(frame_number):
+            delay = self.movie.nextFrameDelay()
+            if delay <= 0:
+                delay = 100
+            # Восстанавливаем текущий кадр
+            self.movie.jumpToFrame(current_frame)
+        
+        if was_playing:
+            self.play_animation()
+        
+        return delay
+
     def copy_to_clipboard(self, clipboard):
         """Копирует текущий кадр в буфер обмена."""
         if self.movie:
