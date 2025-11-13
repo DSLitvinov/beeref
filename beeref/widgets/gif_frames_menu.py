@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class GifFrameThumbnail(QtWidgets.QWidget):
     """Виджет для отображения одного кадра GIF."""
     
-    FRAME_SIZE = 64  # Размер миниатюры кадра
+    FRAME_SIZE = 96  # Размер миниатюры кадра
     
     def __init__(self, frame_number: int, pixmap: QtGui.QPixmap, 
                  delay_ms: int, frames_menu: "GifFramesMenu", parent=None):
@@ -129,7 +129,18 @@ class GifFramesMenu(QtWidgets.QWidget):
         scroll_area.setWidget(self.frames_container)
         layout.addWidget(scroll_area)
         
-        self.setStyleSheet(constants.get_floating_menu_base_style())
+        # Применяем стиль с скруглением как у других плавающих панелей
+        bg = constants.COLORS['Active:Window']
+        border = constants.COLORS['Active:Base']
+        bg_r, bg_g, bg_b = bg[:3]
+        border_r, border_g, border_b = border[:3]
+        self.setStyleSheet(f"""
+            QWidget#GifFramesMenu {{
+                background-color: rgba({bg_r}, {bg_g}, {bg_b}, 255);
+                border-radius: 8px;
+                border: 1px solid rgba({border_r}, {border_g}, {border_b}, 255);
+            }}
+        """)
         self.hide()
         
         self.frame_widgets = []
@@ -227,29 +238,38 @@ class GifFramesMenu(QtWidgets.QWidget):
             return
         
         parent = self.parentWidget()
-        if parent is None:
+        view = self.view
+        if parent is None or view is None:
             return
         
-        # Если основное меню не видно, позиционируем относительно viewport
-        if not self.gif_menu.isVisible():
-            viewport = self.view.viewport()
-            if viewport is None:
-                return
-            view_rect = viewport.rect()
-            bottom_center = view_rect.bottomLeft() + QtCore.QPoint(view_rect.width() // 2, 0)
-            bottom_center_global = viewport.mapToGlobal(bottom_center)
-            bottom_center_parent = parent.mapFromGlobal(bottom_center_global)
-            
-            x = bottom_center_parent.x() - self.width() // 2
-            y = bottom_center_parent.y() - self.height() - 8
-        else:
-            # Получаем позицию основного GIF меню
+        viewport = view.viewport()
+        if viewport is None:
+            return
+        
+        view_rect = viewport.rect()
+        bottom_left_global = viewport.mapToGlobal(view_rect.bottomLeft())
+        bottom_right_global = viewport.mapToGlobal(view_rect.bottomRight())
+        
+        bottom_left_parent = parent.mapFromGlobal(bottom_left_global)
+        bottom_right_parent = parent.mapFromGlobal(bottom_right_global)
+        
+        # Ширина на всю ширину холста
+        available_width = bottom_right_parent.x() - bottom_left_parent.x()
+        
+        # Устанавливаем ширину на всю ширину
+        self.setFixedWidth(available_width)
+        
+        # Получаем естественную высоту контента
+        self.adjustSize()
+        height = self.height()
+        
+        # Позиционируем над основным меню с отступом 8px
+        if self.gif_menu.isVisible():
             gif_menu_pos = self.gif_menu.pos()
-            gif_menu_height = self.gif_menu.height()
-            
-            # Позиционируем над основным меню с отступом 8px
-            x = gif_menu_pos.x() + (self.gif_menu.width() - self.width()) // 2
-            y = gif_menu_pos.y() - self.height() - 8
+            y = gif_menu_pos.y() - height - 8
+        else:
+            # Если основное меню не видно, позиционируем относительно viewport
+            y = bottom_left_parent.y() - height - 8
         
         # Проверяем, не выходит ли за границы экрана
         if y < 0:
@@ -258,11 +278,8 @@ class GifFramesMenu(QtWidgets.QWidget):
             else:
                 y = 8
         
-        # Ограничиваем по горизонтали
-        if x < 0:
-            x = 8
-        elif x + self.width() > parent.width():
-            x = parent.width() - self.width() - 8
+        # Позиционируем по левому краю
+        x = bottom_left_parent.x()
         
         self.move(x, y)
     

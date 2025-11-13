@@ -5,9 +5,10 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Optional
 
-from PyQt6 import QtWidgets
+from PyQt6 import QtGui, QtWidgets
 
 from beeref import constants
+from beeref.assets import BeeAssets
 from beeref.widgets.floating_menu import FloatingMenu
 
 logger = logging.getLogger(__name__)
@@ -34,6 +35,15 @@ class GifFloatingMenu(FloatingMenu):
         except Exception as e:
             logger.warning(f'Failed to initialize frames menu: {e}')
             self.frames_menu = None
+
+        # Загружаем иконки
+        assets = BeeAssets()
+        icons_path = assets.PATH.joinpath('icons')
+        prev_frame_icon = QtGui.QIcon(str(icons_path.joinpath('prev-frame.svg')))
+        play_icon = QtGui.QIcon(str(icons_path.joinpath('play.svg')))
+        pause_icon = QtGui.QIcon(str(icons_path.joinpath('pause.svg')))
+        next_frame_icon = QtGui.QIcon(str(icons_path.joinpath('next-frame.svg')))
+        frames_icon = QtGui.QIcon(str(icons_path.joinpath('frames.svg')))
 
         # Combobox для выбора скорости воспроизведения
         self.speed_combo = QtWidgets.QComboBox(self)
@@ -62,28 +72,34 @@ class GifFloatingMenu(FloatingMenu):
 
         # Кнопка "Кадр назад"
         self.prev_frame_btn = self.add_button(
-            "◀◀",
+            "",
+            icon=prev_frame_icon,
             callback=self.on_previous_frame,
         )
         self.prev_frame_btn.setToolTip("Previous frame")
 
         # Кнопка Play/Pause
         self.play_pause_btn = self.add_button(
-            "▶",
+            "",
+            icon=play_icon,
             callback=self.on_toggle_play_pause,
         )
         self.play_pause_btn.setToolTip("Play/Pause")
+        self.play_icon = play_icon
+        self.pause_icon = pause_icon
 
         # Кнопка "Кадр вперед"
         self.next_frame_btn = self.add_button(
-            "▶▶",
+            "",
+            icon=next_frame_icon,
             callback=self.on_next_frame,
         )
         self.next_frame_btn.setToolTip("Next frame")
 
         # Кнопка для открытия меню кадров
         self.frames_btn = self.add_button(
-            "📋",
+            "",
+            icon=frames_icon,
             callback=self.on_toggle_frames_menu,
         )
         self.frames_btn.setToolTip("Show frames timeline")
@@ -117,13 +133,13 @@ class GifFloatingMenu(FloatingMenu):
                 self.current_item.set_speed(speed)
 
     def update_play_pause_button(self) -> None:
-        """Обновляет текст кнопки Play/Pause в зависимости от состояния."""
+        """Обновляет иконку кнопки Play/Pause в зависимости от состояния."""
         if self.current_item and hasattr(self.current_item, 'is_playing'):
             if self.current_item.is_playing:
-                self.play_pause_btn.setText("⏸")
+                self.play_pause_btn.setIcon(self.pause_icon)
                 self.play_pause_btn.setToolTip("Pause")
             else:
-                self.play_pause_btn.setText("▶")
+                self.play_pause_btn.setIcon(self.play_icon)
                 self.play_pause_btn.setToolTip("Play")
 
     def on_toggle_play_pause(self) -> None:
