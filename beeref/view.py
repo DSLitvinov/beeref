@@ -488,11 +488,46 @@ class BeeGraphicsView(MainControlsMixin,
         dialog = widgets.color_picker.ColorPickerDialog(self, initial)
         if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
             return
-        color = dialog.selectedColor()
+        bg_color = dialog.selectedColor()
+        
+        # Вычисляем цвет текста на основе цвета фона
+        text_color = self._calculate_text_color_from_background(bg_color)
+        
         for item in items:
             if hasattr(item, 'set_background_color'):
-                item.set_background_color(color)
+                item.set_background_color(bg_color)
+            # Автоматически изменяем цвет текста
+            item.setDefaultTextColor(text_color)
+            item.update()
         self._refresh_visible_floating_menu()
+    
+    def _calculate_text_color_from_background(self, bg_color: QtGui.QColor) -> QtGui.QColor:
+        """Вычисляет цвет текста на основе цвета фона.
+        
+        Правила:
+        - Если фон черный (яркость < 30) - текст белый
+        - Если фон белый (яркость > 230) - текст черный
+        - Иначе - текст на два тона темнее фона
+        """
+        # Получаем RGB компоненты (0-255)
+        r, g, b = bg_color.red(), bg_color.green(), bg_color.blue()
+        
+        # Вычисляем яркость по формуле: 0.299*R + 0.587*G + 0.114*B
+        brightness = 0.299 * r + 0.587 * g + 0.114 * b
+        
+        if brightness < 30:
+            # Очень темный фон - белый текст
+            return QtGui.QColor(255, 255, 255)
+        elif brightness > 230:
+            # Очень светлый фон - черный текст
+            return QtGui.QColor(0, 0, 0)
+        else:
+            # Средняя яркость - делаем текст на два тона темнее
+            # Уменьшаем каждый компонент на 40 единиц (два тона)
+            new_r = max(0, r - 40)
+            new_g = max(0, g - 40)
+            new_b = max(0, b - 40)
+            return QtGui.QColor(new_r, new_g, new_b)
 
     def change_selected_text_size(self, size: int):
         if size <= 0 or size > 1000:  # Reasonable upper limit
