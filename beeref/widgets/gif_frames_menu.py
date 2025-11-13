@@ -32,6 +32,8 @@ class GifFrameThumbnail(QtWidgets.QWidget):
         
         self.setFixedSize(self.FRAME_SIZE + 8, self.FRAME_SIZE + 24)
         self.setToolTip(f"Frame: {frame_number}\nDelay: {delay_ms / 1000:.2f}s")
+        self.drag_start_position = None
+        self.is_dragging = False
         
     def paintEvent(self, event):
         painter = QtGui.QPainter(self)
@@ -66,9 +68,68 @@ class GifFrameThumbnail(QtWidgets.QWidget):
     
     def mousePressEvent(self, event):
         if event.button() == QtCore.Qt.MouseButton.LeftButton:
+            # Сохраняем позицию начала перетаскивания
+            self.drag_start_position = event.position().toPoint()
+            self.is_dragging = False
+        super().mousePressEvent(event)
+    
+    def mouseMoveEvent(self, event):
+        """Обработка начала перетаскивания кадра."""
+        if not (event.buttons() & QtCore.Qt.MouseButton.LeftButton):
+            return
+        
+        if self.drag_start_position is None:
+            return
+        
+        # Проверяем, достаточно ли переместили мышь для начала drag
+        if ((event.position().toPoint() - self.drag_start_position).manhattanLength() 
+                < QtWidgets.QApplication.startDragDistance()):
+            return
+        
+        # Помечаем, что началось перетаскивание
+        self.is_dragging = True
+        
+        # Создаем QDrag объект
+        drag = QtGui.QDrag(self)
+        mime_data = QtCore.QMimeData()
+        
+        # Конвертируем pixmap в QImage для передачи через drag
+        image = self.pixmap.toImage()
+        mime_data.setImageData(image)
+        
+        drag.setMimeData(mime_data)
+        
+        # Устанавливаем визуальное представление при перетаскивании
+        # Используем оригинальный pixmap, но уменьшенный для предпросмотра
+        preview_pixmap = self.pixmap.scaled(
+            128, 128,
+            QtCore.Qt.AspectRatioMode.KeepAspectRatio,
+            QtCore.Qt.TransformationMode.SmoothTransformation
+        )
+        drag.setPixmap(preview_pixmap)
+        drag.setHotSpot(event.position().toPoint() - self.drag_start_position)
+        
+        # Начинаем drag операцию
+        drag.exec(QtCore.Qt.DropAction.CopyAction)
+        
+        # Сбрасываем состояние после завершения drag
+        self.drag_start_position = None
+        self.is_dragging = False
+        
+        super().mouseMoveEvent(event)
+    
+    def mouseReleaseEvent(self, event):
+        """Обработка клика по кадру (если не было перетаскивания)."""
+        if (event.button() == QtCore.Qt.MouseButton.LeftButton 
+                and not self.is_dragging 
+                and self.drag_start_position is not None):
+            # Если не было перетаскивания, выбираем кадр
             if self.frames_menu:
                 self.frames_menu.select_frame(self.frame_number)
-        super().mousePressEvent(event)
+        
+        self.drag_start_position = None
+        self.is_dragging = False
+        super().mouseReleaseEvent(event)
 
 
 class GifFramesMenu(QtWidgets.QWidget):
