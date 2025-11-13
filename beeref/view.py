@@ -32,7 +32,8 @@ from beeref.fileio.export import exporter_registry, ImagesToDirectoryExporter
 from beeref import widgets
 from beeref.widgets.text_floating_menu import TextFloatingMenu
 from beeref.widgets.image_floating_menu import ImageFloatingMenu
-from beeref.items import BeePixmapItem, BeeTextItem
+from beeref.widgets.gif_floating_menu import GifFloatingMenu
+from beeref.items import BeePixmapItem, BeeTextItem, BeeGifItem
 from beeref.main_controls import MainControlsMixin
 from beeref.scene import BeeGraphicsScene
 from beeref.utils import get_file_extension_from_format, qcolor_to_hex
@@ -60,6 +61,7 @@ class BeeGraphicsView(MainControlsMixin,
 
         self.image_floating_menu: Optional[ImageFloatingMenu] = None
         self.text_floating_menu: Optional[TextFloatingMenu] = None
+        self.gif_floating_menu: Optional[GifFloatingMenu] = None
 
         self.setBackgroundBrush(
             QtGui.QBrush(QtGui.QColor(*constants.COLORS['Scene:Canvas'])))
@@ -141,11 +143,12 @@ class BeeGraphicsView(MainControlsMixin,
     def _init_floating_menus(self, parent: QtWidgets.QWidget) -> None:
         self.image_floating_menu = ImageFloatingMenu(parent, self)
         self.text_floating_menu = TextFloatingMenu(parent, self)
+        self.gif_floating_menu = GifFloatingMenu(parent, self)
 
     def _floating_menus(self):
         return [
             menu
-            for menu in (self.image_floating_menu, self.text_floating_menu)
+            for menu in (self.image_floating_menu, self.text_floating_menu, self.gif_floating_menu)
             if menu is not None
         ]
 
@@ -160,17 +163,24 @@ class BeeGraphicsView(MainControlsMixin,
         if self.scene.has_single_selection():
             item = self.scene.selectedItems(user_only=True)[0]
             if isinstance(item, BeeTextItem) and self.text_floating_menu:
-                if self.image_floating_menu:
-                    self.image_floating_menu.hide_menu()
+                self._hide_other_menus(self.text_floating_menu)
                 self.text_floating_menu.show_for_item(item)
+            elif isinstance(item, BeeGifItem) and self.gif_floating_menu:
+                self._hide_other_menus(self.gif_floating_menu)
+                self.gif_floating_menu.show_for_item(item)
             elif getattr(item, 'is_image', False) and self.image_floating_menu:
-                if self.text_floating_menu:
-                    self.text_floating_menu.hide_menu()
+                self._hide_other_menus(self.image_floating_menu)
                 self.image_floating_menu.show_for_item(item)
             else:
                 self._hide_all_floating_menus()
         else:
             self._hide_all_floating_menus()
+
+    def _hide_other_menus(self, current_menu):
+        """Скрывает все меню кроме текущего."""
+        for menu in self._floating_menus():
+            if menu != current_menu:
+                menu.hide_menu()
 
     def update_floating_menus_position(self) -> None:
         for menu in self._floating_menus():
@@ -184,6 +194,10 @@ class BeeGraphicsView(MainControlsMixin,
                 and self.text_floating_menu
                 and self.text_floating_menu.isVisible()):
             self.text_floating_menu.show_for_item(item)
+        elif (isinstance(item, BeeGifItem)
+              and self.gif_floating_menu
+              and self.gif_floating_menu.isVisible()):
+            self.gif_floating_menu.show_for_item(item)
         elif (getattr(item, 'is_image', False)
               and self.image_floating_menu
               and self.image_floating_menu.isVisible()):

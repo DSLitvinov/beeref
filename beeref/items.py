@@ -826,3 +826,245 @@ class BeeErrorItem(BeeItemMixin, QtWidgets.QGraphicsTextItem):
 
     def copy_to_clipboard(self, clipboard):
         clipboard.setText(self.toPlainText())
+
+
+@register_item
+class BeeGifItem(BeeItemMixin, QtWidgets.QGraphicsPixmapItem):
+    """Class for animated GIF images."""
+
+    TYPE = 'gif'
+
+    def __init__(self, filename=None, **kwargs):
+        super().__init__()
+        self.save_id = None
+        self.filename = filename
+        self.is_image = True
+        self.init_selectable()
+        self.settings = BeeSettings()
+        
+        # QMovie для воспроизведения GIF
+        self.movie = None
+        self.is_playing = False
+        self.current_frame = 0
+        self.frame_count = 0
+        
+        if filename:
+            self.load_gif(filename)
+        
+        logger.debug(f'Initialized {self}')
+
+    def load_gif(self, filename):
+        """Загружает GIF файл и инициализирует QMovie."""
+        if not filename or not os.path.exists(filename):
+            logger.warning(f'GIF file not found: {filename}')
+            return
+        
+        self.movie = QtGui.QMovie(filename)
+        self.movie.setCacheMode(QtGui.QMovie.CacheMode.CacheAll)
+        
+        # Подключаем сигнал обновления кадра
+        self.movie.frameChanged.connect(self.on_frame_changed)
+        self.movie.finished.connect(self.on_animation_finished)
+        
+        # Получаем количество кадров
+        self.frame_count = self.movie.frameCount()
+        if self.frame_count > 0:
+            # Устанавливаем первый кадр
+            self.movie.jumpToFrame(0)
+            pixmap = self.movie.currentPixmap()
+            if not pixmap.isNull():
+                self.setPixmap(pixmap)
+                self.current_frame = 0
+        
+        logger.debug(f'Loaded GIF: {filename}, frames: {self.frame_count}')
+
+    def on_frame_changed(self, frame_number):
+        """Обработчик изменения кадра."""
+        if self.movie:
+            pixmap = self.movie.currentPixmap()
+            if not pixmap.isNull():
+                self.setPixmap(pixmap)
+                self.current_frame = frame_number
+                self.update()
+
+    def on_animation_finished(self):
+        """Обработчик завершения анимации."""
+        if self.movie and self.movie.loopCount() != -1:
+            # Если не бесконечный цикл, останавливаем
+            self.is_playing = False
+            if self.scene():
+                # Уведомляем сцену об изменении состояния
+                self.scene().update()
+
+    def toggle_animation(self):
+        """Переключает воспроизведение/паузу анимации."""
+        if not self.movie:
+            return
+        
+        if self.is_playing:
+            self.pause_animation()
+        else:
+            self.play_animation()
+
+    def play_animation(self):
+        """Запускает воспроизведение анимации."""
+        if not self.movie:
+            return
+        
+        if not self.is_playing:
+            self.is_playing = True
+            self.movie.start()
+            logger.debug(f'Started playing GIF: {self.filename}')
+
+    def pause_animation(self):
+        """Приостанавливает воспроизведение анимации."""
+        if not self.movie:
+            return
+        
+        if self.is_playing:
+            self.is_playing = False
+            self.movie.setPaused(True)
+            logger.debug(f'Paused GIF: {self.filename}')
+
+    def previous_frame(self):
+        """Переходит к предыдущему кадру."""
+        if not self.movie or self.frame_count == 0:
+            return
+        
+        # Останавливаем анимацию если она играет
+        was_playing = self.is_playing
+        if was_playing:
+            self.pause_animation()
+        
+        # Переходим к предыдущему кадру
+        new_frame = (self.current_frame - 1) % self.frame_count
+        if self.movie.jumpToFrame(new_frame):
+            self.current_frame = new_frame
+            pixmap = self.movie.currentPixmap()
+            if not pixmap.isNull():
+                self.setPixmap(pixmap)
+                self.update()
+        
+        # Возобновляем анимацию если она была запущена
+        if was_playing:
+            self.play_animation()
+
+    def next_frame(self):
+        """Переходит к следующему кадру."""
+        if not self.movie or self.frame_count == 0:
+            return
+        
+        # Останавливаем анимацию если она играет
+        was_playing = self.is_playing
+        if was_playing:
+            self.pause_animation()
+        
+        # Переходим к следующему кадру
+        new_frame = (self.current_frame + 1) % self.frame_count
+        if self.movie.jumpToFrame(new_frame):
+            self.current_frame = new_frame
+            pixmap = self.movie.currentPixmap()
+            if not pixmap.isNull():
+                self.setPixmap(pixmap)
+                self.update()
+        
+        # Возобновляем анимацию если она была запущена
+        if was_playing:
+            self.play_animation()
+
+    def bounding_rect_unselected(self):
+        """Возвращает границы элемента без учета выделения."""
+        return QtWidgets.QGraphicsPixmapItem.boundingRect(self)
+
+    def paint(self, painter, option, widget):
+        """Отрисовка GIF элемента с рамкой выделения."""
+        if abs(painter.combinedTransform().m11()) < 2:
+            # Сглаживание изображения при небольшом зуме
+            painter.setRenderHint(painter.RenderHint.SmoothPixmapTransform)
+        
+        # Отрисовываем текущий кадр
+        if self.movie:
+            pixmap = self.movie.currentPixmap()
+            if not pixmap.isNull():
+                painter.drawPixmap(0, 0, pixmap)
+        else:
+            # Если movie не загружен, рисуем стандартный pixmap
+            pm = self.pixmap()
+            if not pm.isNull():
+                painter.drawPixmap(0, 0, pm)
+        
+        # Отрисовываем рамку выделения и ручки
+        self.paint_selectable(painter, option, widget)
+
+    def __str__(self):
+        if self.movie:
+            size = self.movie.scaledSize()
+            return (f'GIF "{self.filename}" {size.width()} x {size.height()}, '
+                    f'{self.frame_count} frames')
+        return f'GIF "{self.filename}"'
+
+    @classmethod
+    def create_from_data(cls, **kwargs):
+        item = kwargs.pop('item', None)
+        data = kwargs.pop('data', {})
+        filename = data.get('filename') or (item.filename if item else None)
+        
+        gif_item = cls(filename=filename)
+        return gif_item
+
+    def update_from_data(self, **kwargs):
+        """Обновляет элемент из данных."""
+        super().update_from_data(**kwargs)
+        # Дополнительная логика для GIF если нужно
+
+    def get_extra_save_data(self):
+        """Возвращает дополнительные данные для сохранения."""
+        return {
+            'filename': self.filename,
+            'opacity': self.opacity(),
+            'current_frame': self.current_frame,
+        }
+
+    def gif_to_bytes(self):
+        """Читает GIF файл и возвращает его байты."""
+        if not self.filename or not os.path.exists(self.filename):
+            return None
+        try:
+            with open(self.filename, 'rb') as f:
+                return f.read()
+        except IOError as e:
+            logger.error(f'Error reading GIF file {self.filename}: {e}')
+            return None
+
+    def get_filename_for_export(self, imgformat='gif', save_id_default=None):
+        """Возвращает имя файла для экспорта."""
+        save_id = self.save_id or save_id_default
+        if save_id is None:
+            raise ValueError("save_id must be provided for export")
+
+        if self.filename:
+            basename = os.path.splitext(os.path.basename(self.filename))[0]
+            return f'{save_id:04}-{basename}.{imgformat}'
+        else:
+            return f'{save_id:04}.{imgformat}'
+
+    def create_copy(self):
+        """Создает копию элемента."""
+        item = BeeGifItem(self.filename)
+        item.setPos(self.pos())
+        item.setZValue(self.zValue())
+        item.setScale(self.scale())
+        item.setRotation(self.rotation())
+        item.setOpacity(self.opacity())
+        if self.flip() == -1:
+            item.do_flip()
+        return item
+
+    def copy_to_clipboard(self, clipboard):
+        """Копирует текущий кадр в буфер обмена."""
+        if self.movie:
+            pixmap = self.movie.currentPixmap()
+            if not pixmap.isNull():
+                clipboard.setPixmap(pixmap)
+        else:
+            clipboard.setPixmap(self.pixmap())

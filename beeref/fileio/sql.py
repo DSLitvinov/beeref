@@ -230,6 +230,24 @@ class SQLiteIO:
                         + IMG_LOADING_ERROR_MSG)
                     data['type'] = BeeErrorItem.TYPE
                 data['item'] = item
+            elif data['type'] == 'gif':
+                from beeref.items import BeeGifItem
+                import tempfile
+                # Сохраняем GIF данные во временный файл
+                if row[9]:  # Если есть данные в sqlar
+                    with tempfile.NamedTemporaryFile(
+                            suffix='.gif', delete=False) as tmp_file:
+                        tmp_file.write(row[9])
+                        tmp_filename = tmp_file.name
+                    item = BeeGifItem(filename=tmp_filename)
+                    # Сохраняем оригинальное имя файла если есть
+                    if 'filename' in data['data']:
+                        item.filename = data['data']['filename']
+                else:
+                    # Если данных нет, используем оригинальный файл
+                    filename = data['data'].get('filename')
+                    item = BeeGifItem(filename=filename)
+                data['item'] = item
 
             self.scene.add_item_later(data)
 
@@ -316,6 +334,14 @@ class SQLiteIO:
                 'INSERT INTO sqlar (item_id, name, mode, sz, data) '
                 'VALUES (?, ?, ?, ?, ?)',
                 (item.save_id, name, 0o644, len(pixmap), pixmap))
+        elif hasattr(item, 'gif_to_bytes'):
+            gif_data = item.gif_to_bytes()
+            if gif_data:
+                name = item.get_filename_for_export('gif')
+                self.ex(
+                    'INSERT INTO sqlar (item_id, name, mode, sz, data) '
+                    'VALUES (?, ?, ?, ?, ?)',
+                    (item.save_id, name, 0o644, len(gif_data), gif_data))
         self.connection.commit()
 
     def update_item(self, item):
