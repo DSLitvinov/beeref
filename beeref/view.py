@@ -914,19 +914,36 @@ class BeeGraphicsView(MainControlsMixin,
             QtCore.QUrl.fromLocalFile(dirname))
 
     def on_selection_changed(self):
-        logger.debug('Currently selected items: %s',
-                     len(self.scene.selectedItems(user_only=True)))
-        self.actiongroup_set_enabled('active_when_selection',
-                                     self.scene.has_selection())
-        self.actiongroup_set_enabled('active_when_single_image',
-                                     self.scene.has_single_image_selection())
+        # Проверяем, что сцена еще существует и не была удалена
+        if not hasattr(self, 'scene') or not self.scene:
+            return
+        
+        try:
+            # Проверяем, что объект сцены еще валиден
+            _ = self.scene.selectedItems()
+        except RuntimeError:
+            # Сцена была удалена, игнорируем
+            logger.debug('Scene was deleted, ignoring selection change')
+            return
+        
+        try:
+            logger.debug('Currently selected items: %s',
+                         len(self.scene.selectedItems(user_only=True)))
+            self.actiongroup_set_enabled('active_when_selection',
+                                         self.scene.has_selection())
+            self.actiongroup_set_enabled('active_when_single_image',
+                                         self.scene.has_single_image_selection())
 
-        if self.scene.has_selection():
-            item = self.scene.selectedItems(user_only=True)[0]
-            grayscale = getattr(item, 'grayscale', False)
-            actions.actions['grayscale'].qaction.setChecked(grayscale)
-        self.viewport().repaint()
-        self._update_floating_menus_on_selection()
+            if self.scene.has_selection():
+                item = self.scene.selectedItems(user_only=True)[0]
+                grayscale = getattr(item, 'grayscale', False)
+                actions.actions['grayscale'].qaction.setChecked(grayscale)
+            self.viewport().repaint()
+            self._update_floating_menus_on_selection()
+        except (RuntimeError, AttributeError):
+            # Сцена была удалена или объект недоступен, игнорируем
+            logger.debug('Scene was deleted or unavailable, ignoring selection change')
+            return
 
     def on_cursor_changed(self, cursor):
         if self.active_mode is None:

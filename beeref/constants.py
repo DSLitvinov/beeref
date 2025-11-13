@@ -115,6 +115,8 @@ def get_floating_menu_button_style():
             padding: 4px 10px;
             font-weight: 600;
             min-width: 12px;
+            min-height: 28px;
+            max-height: 28px;
         }}
 
         QWidget#FloatingMenu QPushButton[floatingButton="true"]:hover,
@@ -138,16 +140,26 @@ def get_floating_menu_separator_style():
     return f"""
         QWidget#FloatingMenu QFrame#FloatingMenuSeparator {{
             background-color: rgba({r}, {g}, {b}, 30);
+            min-height: 28px;
+            max-height: 28px;
         }}
     """
 
 
 def get_floating_menu_combo_style():
     """Combo-box styling for floating menus."""
+    from beeref.assets import BeeAssets
+    
     bg = COLORS['Active:Button']
     active_color = COLORS['Active:Text']
     border_color = (255, 255, 255, 10)
     border_r, border_g, border_b = border_color[:3]
+    
+    # Получаем путь к иконке стрелки
+    assets = BeeAssets()
+    arrow_icon_path = assets.PATH.joinpath('icons', 'small-down.svg')
+    # Используем прямой путь, экранируя обратные слеши для Windows
+    arrow_icon_path_str = str(arrow_icon_path).replace('\\', '/')
 
     return f"""
         QWidget#FloatingMenu QComboBox,
@@ -158,6 +170,8 @@ def get_floating_menu_combo_style():
             border-radius: 4px;
             padding: 4px 12px;
             min-width: 20px;
+            min-height: 28px;
+            max-height: 28px;
         }}
 
         QWidget#FloatingMenu QComboBox::drop-down,
@@ -168,8 +182,10 @@ def get_floating_menu_combo_style():
 
         QWidget#FloatingMenu QComboBox::down-arrow,
         QWidget#FloatingMenu QFontComboBox::down-arrow {{
-            image: none;
-            border: none;
+            image: url({arrow_icon_path_str});
+            width: 12px;
+            height: 12px;
+            margin-right: 4px;
         }}
 
         QWidget#FloatingMenu QComboBox QAbstractItemView,
