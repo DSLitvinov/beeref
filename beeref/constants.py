@@ -155,8 +155,8 @@ def get_floating_menu_combo_style():
             background-color: {_css_color(bg)};
             color: {_css_color(active_color)};
             border: 1px solid rgba({border_r}, {border_g}, {border_b}, 160);
-            border-radius: 6px;
-            padding: 2px 6px;
+            border-radius: 4px;
+            padding: 4px 10px;
             min-width: 70px;
         }}
 
