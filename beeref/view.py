@@ -70,6 +70,7 @@ class BeeGraphicsView(MainControlsMixin,
         self.drawing_mode = False
         self.current_draw_item = None
         self.drawing_path = None
+        self.drawing_points = []  # Для сглаживания линии
 
         self.setBackgroundBrush(
             QtGui.QBrush(QtGui.QColor(*constants.COLORS['Scene:Canvas'])))
@@ -546,6 +547,7 @@ class BeeGraphicsView(MainControlsMixin,
                     self.scene.removeItem(self.current_draw_item)
             self.current_draw_item = None
             self.drawing_path = None
+            self.drawing_points = []
             self.viewport().unsetCursor()
 
     def enter_drawing_mode(self):
@@ -556,6 +558,7 @@ class BeeGraphicsView(MainControlsMixin,
         self.viewport().setCursor(QtCore.Qt.CursorShape.CrossCursor)
         self.current_draw_item = None
         self.drawing_path = None
+        self.drawing_points = []
 
     def _start_drawing(self, pos: QtCore.QPointF):
         """Начинает рисование в указанной позиции."""
@@ -571,19 +574,51 @@ class BeeGraphicsView(MainControlsMixin,
         
         # Начинаем новый путь
         self.drawing_path = QtGui.QPainterPath()
+        self.drawing_points = []  # Сбрасываем точки для сглаживания
         local_pos = self.current_draw_item.mapFromScene(pos)
         self.drawing_path.moveTo(local_pos)
+        self.drawing_points.append(local_pos)  # Сохраняем первую точку
         self.current_draw_item.setPath(self.drawing_path)
 
     def _continue_drawing(self, pos: QtCore.QPointF):
-        """Продолжает рисование до указанной позиции."""
+        """Продолжает рисование до указанной позиции с сглаживанием."""
         if (not self.drawing_mode or not self.current_draw_item 
             or not self.drawing_path):
             return
             
-        # Добавляем линию к текущей позиции
         local_pos = self.current_draw_item.mapFromScene(pos)
-        self.drawing_path.lineTo(local_pos)
+        self.drawing_points.append(local_pos)
+        
+        # Применяем сглаживание через кубические кривые Безье
+        if len(self.drawing_points) >= 2:
+            # Если точек достаточно, используем сглаживание
+            if len(self.drawing_points) == 2:
+                # Для первых двух точек просто рисуем линию
+                self.drawing_path.lineTo(local_pos)
+            else:
+                # Для остальных точек используем кубические кривые Безье
+                # Берем последние 3 точки для вычисления контрольных точек
+                p0 = self.drawing_points[-3]  # Предыдущая точка
+                p1 = self.drawing_points[-2]  # Текущая точка (старая)
+                p2 = self.drawing_points[-1]  # Новая точка
+                
+                # Вычисляем контрольные точки для плавной кривой
+                # Контрольная точка 1: между p0 и p1, смещенная к p1
+                cp1_x = p0.x() + (p1.x() - p0.x()) * 0.5
+                cp1_y = p0.y() + (p1.y() - p0.y()) * 0.5
+                
+                # Контрольная точка 2: между p1 и p2, смещенная к p1
+                cp2_x = p1.x() + (p2.x() - p1.x()) * 0.5
+                cp2_y = p1.y() + (p2.y() - p1.y()) * 0.5
+                
+                # Используем кубическую кривую Безье для плавного перехода
+                # От предыдущей точки (p1) к новой (p2) через контрольные точки
+                self.drawing_path.cubicTo(
+                    QtCore.QPointF(cp1_x, cp1_y),  # Контрольная точка 1
+                    QtCore.QPointF(cp2_x, cp2_y),  # Контрольная точка 2
+                    p2  # Конечная точка
+                )
+        
         self.current_draw_item.setPath(self.drawing_path)
 
     def _finish_drawing(self, pos: QtCore.QPointF):
@@ -603,6 +638,7 @@ class BeeGraphicsView(MainControlsMixin,
         # для следующего штриха (как в PureRef)
         self.current_draw_item = None
         self.drawing_path = None
+        self.drawing_points = []
 
     def _calculate_text_color_from_background(self, bg_color: QtGui.QColor) -> QtGui.QColor:
         """Вычисляет цвет текста на основе цвета фона.
