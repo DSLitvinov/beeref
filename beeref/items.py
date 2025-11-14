@@ -901,6 +901,9 @@ class BeeDrawItem(BeeItemMixin, QtWidgets.QGraphicsPathItem):
 
     def paint(self, painter, option, widget):
         """Отрисовка пути с рамкой выделения."""
+        # Отключаем стандартную отрисовку Qt для выделенных элементов
+        option.state &= ~QtWidgets.QStyle.StateFlag.State_Selected
+        option.state &= ~QtWidgets.QStyle.StateFlag.State_HasFocus
         # Рисуем основную линию
         super().paint(painter, option, widget)
         
@@ -947,6 +950,36 @@ class BeeDrawItem(BeeItemMixin, QtWidgets.QGraphicsPathItem):
                         painter.drawPath(arrow_path)
         
         self.paint_selectable(painter, option, widget)
+
+    def paint_debug(self, painter, option, widget):
+        """Переопределяем для полного отключения отладочной информации."""
+        # Полностью отключаем отладочную информацию для линий
+        pass
+
+    def paint_selectable(self, painter, option, widget):
+        """Переопределяем для убирания пунктирной обводки (отладочной информации)."""
+        # Не вызываем paint_debug, чтобы убрать пунктирную обводку
+        # self.paint_debug(painter, option, widget)
+
+        if not self.has_selection_outline():
+            return
+
+        pen = QtGui.QPen(SELECT_COLOR)
+        pen.setWidth(self.SELECT_LINE_WIDTH)
+        pen.setCosmetic(True)
+        painter.setPen(pen)
+        painter.setBrush(QtGui.QBrush())
+
+        # Draw the main selection rectangle
+        painter.drawRect(self.bounding_rect_unselected())
+
+        # If it's a single selection, draw the handles:
+        if self.has_selection_handles():
+            pen.setWidth(self.SELECT_HANDLE_SIZE)
+            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            painter.setPen(pen)
+            for corner in self.corners:
+                painter.drawPoint(corner)
 
     def copy_to_clipboard(self, clipboard):
         """Для рисования копирование не поддерживается."""
