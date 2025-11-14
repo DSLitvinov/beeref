@@ -33,7 +33,8 @@ from beeref import widgets
 from beeref.widgets.text_floating_menu import TextFloatingMenu
 from beeref.widgets.image_floating_menu import ImageFloatingMenu
 from beeref.widgets.gif_floating_menu import GifFloatingMenu
-from beeref.items import BeePixmapItem, BeeTextItem, BeeGifItem
+from beeref.widgets.draw_floating_menu import DrawFloatingMenu
+from beeref.items import BeePixmapItem, BeeTextItem, BeeGifItem, BeeDrawItem
 from beeref.main_controls import MainControlsMixin
 from beeref.scene import BeeGraphicsScene
 from beeref.utils import get_file_extension_from_format, qcolor_to_hex
@@ -50,6 +51,7 @@ class BeeGraphicsView(MainControlsMixin,
     PAN_MODE = 1
     ZOOM_MODE = 2
     SAMPLE_COLOR_MODE = 3
+    DRAW_MODE = 4
 
     def __init__(self, app, parent=None):
         super().__init__(parent)
@@ -62,6 +64,12 @@ class BeeGraphicsView(MainControlsMixin,
         self.image_floating_menu: Optional[ImageFloatingMenu] = None
         self.text_floating_menu: Optional[TextFloatingMenu] = None
         self.gif_floating_menu: Optional[GifFloatingMenu] = None
+        self.draw_floating_menu: Optional[DrawFloatingMenu] = None
+        
+        # Инициализация режима рисования
+        self.drawing_mode = False
+        self.current_draw_item = None
+        self.drawing_path = None
 
         self.setBackgroundBrush(
             QtGui.QBrush(QtGui.QColor(*constants.COLORS['Scene:Canvas'])))
@@ -118,6 +126,7 @@ class BeeGraphicsView(MainControlsMixin,
     def cancel_active_modes(self):
         self.scene.cancel_active_modes()
         self.cancel_sample_color_mode()
+        self.cancel_drawing_mode()
         self.active_mode = None
 
     def cancel_sample_color_mode(self):
@@ -129,6 +138,22 @@ class BeeGraphicsView(MainControlsMixin,
             del self.sample_color_widget
         if self.scene.has_multi_selection():
             self.scene.multi_select_item.bring_to_front()
+
+    def cancel_drawing_mode(self):
+        """Отменяет режим рисования."""
+        if self.drawing_mode:
+            logger.debug('Cancel drawing mode')
+            self.drawing_mode = False
+            if self.current_draw_item and self.drawing_path:
+                # Если элемент пустой, удаляем его
+                if self.drawing_path.elementCount() <= 1:
+                    self.scene.removeItem(self.current_draw_item)
+            self.current_draw_item = None
+            self.drawing_path = None
+            self.viewport().unsetCursor()
+            # Скрываем меню рисования
+            if self.draw_floating_menu:
+                self.draw_floating_menu.hide_menu()
 
     def update_window_title(self):
         clean = self.undo_stack.isClean()
@@ -144,11 +169,13 @@ class BeeGraphicsView(MainControlsMixin,
         self.image_floating_menu = ImageFloatingMenu(parent, self)
         self.text_floating_menu = TextFloatingMenu(parent, self)
         self.gif_floating_menu = GifFloatingMenu(parent, self)
+        self.draw_floating_menu = DrawFloatingMenu(parent, self)
 
     def _floating_menus(self):
         return [
             menu
-            for menu in (self.image_floating_menu, self.text_floating_menu, self.gif_floating_menu)
+            for menu in (self.image_floating_menu, self.text_floating_menu, 
+                        self.gif_floating_menu, self.draw_floating_menu)
             if menu is not None
         ]
 
@@ -168,6 +195,9 @@ class BeeGraphicsView(MainControlsMixin,
             elif isinstance(item, BeeGifItem) and self.gif_floating_menu:
                 self._hide_other_menus(self.gif_floating_menu)
                 self.gif_floating_menu.show_for_item(item)
+            elif isinstance(item, BeeDrawItem) and self.draw_floating_menu:
+                self._hide_other_menus(self.draw_floating_menu)
+                self.draw_floating_menu.show_for_item(item)
             elif getattr(item, 'is_image', False) and self.image_floating_menu:
                 self._hide_other_menus(self.image_floating_menu)
                 self.image_floating_menu.show_for_item(item)
@@ -198,6 +228,10 @@ class BeeGraphicsView(MainControlsMixin,
               and self.gif_floating_menu
               and self.gif_floating_menu.isVisible()):
             self.gif_floating_menu.show_for_item(item)
+        elif (isinstance(item, BeeDrawItem)
+              and self.draw_floating_menu
+              and self.draw_floating_menu.isVisible()):
+            self.draw_floating_menu.show_for_item(item)
         elif (getattr(item, 'is_image', False)
               and self.image_floating_menu
               and self.image_floating_menu.isVisible()):
@@ -501,6 +535,75 @@ class BeeGraphicsView(MainControlsMixin,
             item.update()
         self._refresh_visible_floating_menu()
     
+    def cancel_drawing_mode(self):
+        """Отменяет режим рисования."""
+        if self.drawing_mode:
+            logger.debug('Cancel drawing mode')
+            self.drawing_mode = False
+            if self.current_draw_item and self.drawing_path:
+                # Если элемент пустой, удаляем его
+                if self.drawing_path.elementCount() <= 1:
+                    self.scene.removeItem(self.current_draw_item)
+            self.current_draw_item = None
+            self.drawing_path = None
+            self.viewport().unsetCursor()
+
+    def enter_drawing_mode(self):
+        """Активирует режим рисования."""
+        logger.debug('Entering drawing mode')
+        self.cancel_active_modes()
+        self.drawing_mode = True
+        self.viewport().setCursor(QtCore.Qt.CursorShape.CrossCursor)
+        self.current_draw_item = None
+        self.drawing_path = None
+
+    def _start_drawing(self, pos: QtCore.QPointF):
+        """Начинает рисование в указанной позиции."""
+        if not self.drawing_mode:
+            return
+        
+        # Создаем новый элемент для рисования при первом клике
+        if not self.current_draw_item:
+            self.current_draw_item = BeeDrawItem()
+            self.drawing_path = QtGui.QPainterPath()
+            # Добавляем элемент на сцену
+            self.undo_stack.push(commands.InsertItems(self.scene, [self.current_draw_item], pos))
+        
+        # Начинаем новый путь
+        self.drawing_path = QtGui.QPainterPath()
+        local_pos = self.current_draw_item.mapFromScene(pos)
+        self.drawing_path.moveTo(local_pos)
+        self.current_draw_item.setPath(self.drawing_path)
+
+    def _continue_drawing(self, pos: QtCore.QPointF):
+        """Продолжает рисование до указанной позиции."""
+        if (not self.drawing_mode or not self.current_draw_item 
+            or not self.drawing_path):
+            return
+            
+        # Добавляем линию к текущей позиции
+        local_pos = self.current_draw_item.mapFromScene(pos)
+        self.drawing_path.lineTo(local_pos)
+        self.current_draw_item.setPath(self.drawing_path)
+
+    def _finish_drawing(self, pos: QtCore.QPointF):
+        """Завершает рисование."""
+        if (not self.drawing_mode or not self.current_draw_item 
+            or not self.drawing_path):
+            return
+            
+        # Завершаем путь
+        self._continue_drawing(pos)
+        
+        # Если путь слишком короткий, удаляем элемент
+        if self.drawing_path.elementCount() <= 1:
+            self.scene.removeItem(self.current_draw_item)
+        
+        # Очищаем текущий элемент, но режим рисования остается активным
+        # для следующего штриха (как в PureRef)
+        self.current_draw_item = None
+        self.drawing_path = None
+
     def _calculate_text_color_from_background(self, bg_color: QtGui.QColor) -> QtGui.QColor:
         """Вычисляет цвет текста на основе цвета фона.
         
@@ -889,6 +992,12 @@ class BeeGraphicsView(MainControlsMixin,
         item.setScale(1 / self.get_scale())
         self.undo_stack.push(commands.InsertItems(self.scene, [item], pos))
 
+    def on_action_insert_draw(self):
+        """Активирует режим рисования через контекстное меню."""
+        self.cancel_active_modes()
+        self.scene.clearSelection()
+        self.enter_drawing_mode()
+
     def on_action_copy(self):
         logger.debug('Copying to clipboard...')
         self.cancel_active_modes()
@@ -1104,6 +1213,13 @@ class BeeGraphicsView(MainControlsMixin,
             return
 
     def mousePressEvent(self, event):
+        # Обработка рисования
+        if self.drawing_mode and event.button() == QtCore.Qt.MouseButton.LeftButton:
+            pos = self.mapToScene(event.position().toPoint())
+            self._start_drawing(pos)
+            event.accept()
+            return
+        
         if self.mousePressEventMainControls(event):
             return
 
@@ -1146,9 +1262,19 @@ class BeeGraphicsView(MainControlsMixin,
             event.accept()
             return
 
+        if self.mousePressEventMainControls(event):
+            return
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
+        # Обработка рисования
+        if self.drawing_mode and self.current_draw_item:
+            if event.buttons() & QtCore.Qt.MouseButton.LeftButton:
+                pos = self.mapToScene(event.position().toPoint())
+                self._continue_drawing(pos)
+                event.accept()
+                return
+        
         if self.active_mode == self.PAN_MODE:
             self.reset_previous_transform()
             pos = event.position()
@@ -1180,6 +1306,13 @@ class BeeGraphicsView(MainControlsMixin,
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
+        # Обработка рисования
+        if self.drawing_mode and event.button() == QtCore.Qt.MouseButton.LeftButton:
+            pos = self.mapToScene(event.position().toPoint())
+            self._finish_drawing(pos)
+            event.accept()
+            return
+        
         if self.active_mode == self.PAN_MODE:
             logger.trace('End pan')
             self.viewport().unsetCursor()
@@ -1201,6 +1334,12 @@ class BeeGraphicsView(MainControlsMixin,
         self.update_floating_menus_position()
 
     def keyPressEvent(self, event):
+        # Обработка Escape для выхода из режима рисования
+        if self.drawing_mode and event.key() == Qt.Key.Key_Escape:
+            self.cancel_drawing_mode()
+            event.accept()
+            return
+        
         if self.keyPressEventMainControls(event):
             return
         if self.active_mode == self.SAMPLE_COLOR_MODE:

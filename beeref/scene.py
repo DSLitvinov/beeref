@@ -408,7 +408,7 @@ class BeeGraphicsScene(QtWidgets.QGraphicsScene):
         if item:
             if not item.isSelected():
                 item.setSelected(True)
-            if item.is_editable:
+            if item.is_editable and hasattr(item, 'enter_edit_mode'):
                 item.enter_edit_mode()
                 self.mousePressEvent(event)
             else:

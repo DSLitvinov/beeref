@@ -166,6 +166,12 @@ actions = ActionList([
         callback='on_action_insert_text',
     ),
     Action(
+        id='insert_draw',
+        text='&Draw',
+        shortcuts=['Ctrl+D'],
+        callback='on_action_insert_draw',
+    ),
+    Action(
         id='undo',
         text='&Undo',
         shortcuts=['Ctrl+Z'],

@@ -31,6 +31,7 @@ from beeref.widgets import (  # noqa: F401
     image_floating_menu,
     gif_floating_menu,
     gif_frames_menu,
+    draw_floating_menu,
     color_picker,
 )
 

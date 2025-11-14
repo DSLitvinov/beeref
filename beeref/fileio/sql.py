@@ -34,7 +34,7 @@ import tempfile
 from PyQt6 import QtGui
 
 from beeref import constants
-from beeref.items import BeePixmapItem, BeeErrorItem
+from beeref.items import BeePixmapItem, BeeErrorItem, BeeDrawItem
 from .errors import BeeFileIOError, IMG_LOADING_ERROR_MSG
 from .schema import SCHEMA, USER_VERSION, MIGRATIONS, APPLICATION_ID
 
@@ -205,6 +205,12 @@ class SQLiteIO:
             ' items.data, null as data '
             'FROM items '
             'WHERE items.type = "text"'))
+        # Fetch draw items separately
+        rows.extend(self.fetchall(
+            'SELECT items.id, type, x, y, z, scale, rotation, flip, '
+            ' items.data, null as data '
+            'FROM items '
+            'WHERE items.type = "draw"'))
         if self.worker:
             self.worker.begin_processing.emit(len(rows))
 
@@ -248,7 +254,10 @@ class SQLiteIO:
                     filename = data['data'].get('filename')
                     item = BeeGifItem(filename=filename)
                 data['item'] = item
-
+            elif data['type'] == 'draw':
+                # Создаем элемент рисования из сохраненных данных
+                item = BeeDrawItem.create_from_data(**data)
+                data['item'] = item
             self.scene.add_item_later(data)
 
             if self.worker:
