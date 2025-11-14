@@ -757,7 +757,7 @@ class BeeDrawItem(BeeItemMixin, QtWidgets.QGraphicsPathItem):
         
         # Настройки пера по умолчанию
         self.pen_color = QtGui.QColor(*COLORS['Scene:Text'])
-        self.pen_width = 3
+        self.pen_width = 8
         self.pen_style = 'solid'  # 'solid', 'dashed', 'arrow'
         self._update_pen()
         self.setBrush(QtGui.QBrush(QtCore.Qt.BrushStyle.NoBrush))

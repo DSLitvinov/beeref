@@ -159,7 +159,7 @@ class DrawFloatingMenu(FloatingMenu):
         
         slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
         slider.setRange(1, 20)
-        slider.setValue(3)
+        slider.setValue(8)
         slider.valueChanged.connect(self.set_pen_width)
         layout.addWidget(slider)
         

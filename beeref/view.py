@@ -581,7 +581,7 @@ class BeeGraphicsView(MainControlsMixin,
         self.current_draw_item.setPath(self.drawing_path)
 
     def _continue_drawing(self, pos: QtCore.QPointF):
-        """Продолжает рисование до указанной позиции с сглаживанием."""
+        """Продолжает рисование до указанной позиции с улучшенным сглаживанием."""
         if (not self.drawing_mode or not self.current_draw_item 
             or not self.drawing_path):
             return
@@ -589,30 +589,74 @@ class BeeGraphicsView(MainControlsMixin,
         local_pos = self.current_draw_item.mapFromScene(pos)
         self.drawing_points.append(local_pos)
         
-        # Применяем сглаживание через кубические кривые Безье
+        # Применяем улучшенное сглаживание через кубические кривые Безье
         if len(self.drawing_points) >= 2:
-            # Если точек достаточно, используем сглаживание
             if len(self.drawing_points) == 2:
                 # Для первых двух точек просто рисуем линию
                 self.drawing_path.lineTo(local_pos)
+            elif len(self.drawing_points) == 3:
+                # Для трех точек используем квадратичную кривую
+                p0 = self.drawing_points[0]
+                p1 = self.drawing_points[1]
+                p2 = self.drawing_points[2]
+                
+                # Контрольная точка - средняя между p1 и p2
+                cp_x = (p1.x() + p2.x()) / 2.0
+                cp_y = (p1.y() + p2.y()) / 2.0
+                
+                self.drawing_path.quadTo(
+                    QtCore.QPointF(cp_x, cp_y),
+                    p2
+                )
             else:
-                # Для остальных точек используем кубические кривые Безье
-                # Берем последние 3 точки для вычисления контрольных точек
-                p0 = self.drawing_points[-3]  # Предыдущая точка
-                p1 = self.drawing_points[-2]  # Текущая точка (старая)
-                p2 = self.drawing_points[-1]  # Новая точка
+                # Для четырех и более точек используем улучшенный алгоритм сглаживания
+                # Используем усреднение нескольких точек для более плавных кривых
+                p1 = self.drawing_points[-2]  # Предыдущая точка
+                p2 = self.drawing_points[-1]  # Текущая точка
                 
-                # Вычисляем контрольные точки для плавной кривой
-                # Контрольная точка 1: между p0 и p1, смещенная к p1
-                cp1_x = p0.x() + (p1.x() - p0.x()) * 0.5
-                cp1_y = p0.y() + (p1.y() - p0.y()) * 0.5
-                
-                # Контрольная точка 2: между p1 и p2, смещенная к p1
-                cp2_x = p1.x() + (p2.x() - p1.x()) * 0.5
-                cp2_y = p1.y() + (p2.y() - p1.y()) * 0.5
+                # Вычисляем скорость (вектор движения) на основе нескольких предыдущих точек
+                if len(self.drawing_points) >= 4:
+                    # Используем усреднение векторов для более плавного движения
+                    p0 = self.drawing_points[-3]
+                    p_prev = self.drawing_points[-4] if len(self.drawing_points) >= 5 else p0
+                    
+                    # Вектор движения 1 (от p_prev к p0)
+                    v1_x = p0.x() - p_prev.x()
+                    v1_y = p0.y() - p_prev.y()
+                    
+                    # Вектор движения 2 (от p0 к p1)
+                    v2_x = p1.x() - p0.x()
+                    v2_y = p1.y() - p0.y()
+                    
+                    # Вектор движения 3 (от p1 к p2)
+                    v3_x = p2.x() - p1.x()
+                    v3_y = p2.y() - p1.y()
+                    
+                    # Усредняем векторы для плавности
+                    avg_v1_x = (v1_x + v2_x) / 2.0
+                    avg_v1_y = (v1_y + v2_y) / 2.0
+                    avg_v2_x = (v2_x + v3_x) / 2.0
+                    avg_v2_y = (v2_y + v3_y) / 2.0
+                    
+                    # Контрольные точки вычисляются с учетом направления движения
+                    # Коэффициент сглаживания (можно настроить от 0.3 до 0.7)
+                    smooth_factor = 0.5
+                    
+                    cp1_x = p1.x() - avg_v1_x * smooth_factor
+                    cp1_y = p1.y() - avg_v1_y * smooth_factor
+                    cp2_x = p1.x() + avg_v2_x * smooth_factor
+                    cp2_y = p1.y() + avg_v2_y * smooth_factor
+                else:
+                    # Для меньшего количества точек используем простой алгоритм
+                    p0 = self.drawing_points[-3]
+                    
+                    # Контрольные точки ближе к p1 для более плавного перехода
+                    cp1_x = p0.x() + (p1.x() - p0.x()) * 0.7
+                    cp1_y = p0.y() + (p1.y() - p0.y()) * 0.7
+                    cp2_x = p1.x() + (p2.x() - p1.x()) * 0.3
+                    cp2_y = p1.y() + (p2.y() - p1.y()) * 0.3
                 
                 # Используем кубическую кривую Безье для плавного перехода
-                # От предыдущей точки (p1) к новой (p2) через контрольные точки
                 self.drawing_path.cubicTo(
                     QtCore.QPointF(cp1_x, cp1_y),  # Контрольная точка 1
                     QtCore.QPointF(cp2_x, cp2_y),  # Контрольная точка 2
