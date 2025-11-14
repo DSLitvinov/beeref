@@ -745,6 +745,7 @@ class BeeDrawItem(BeeItemMixin, QtWidgets.QGraphicsPathItem):
     """Class for freehand drawing items."""
 
     TYPE = 'draw'
+    CLICKABLE_PADDING = 8.0  # Отступ вокруг линии для увеличения кликабельной области
 
     def __init__(self, path=None, **kwargs):
         super().__init__()
@@ -763,6 +764,12 @@ class BeeDrawItem(BeeItemMixin, QtWidgets.QGraphicsPathItem):
         
         if path:
             self.setPath(path)
+
+    def setPath(self, path):
+        """Устанавливает путь и обновляет геометрию."""
+        self.prepareGeometryChange()
+        super().setPath(path)
+        self.update()
 
     @classmethod
     def create_from_data(cls, **kwargs):
@@ -859,78 +866,38 @@ class BeeDrawItem(BeeItemMixin, QtWidgets.QGraphicsPathItem):
         if path.isEmpty():
             return QtCore.QRectF()
         
-        # Получаем базовый boundingRect пути
-        base_rect = QtWidgets.QGraphicsPathItem.boundingRect(self)
+        # Получаем boundingRect напрямую из пути
+        base_rect = path.boundingRect()
         
-        # Добавляем отступ для толщины пера
-        margin = self.pen_width / 2.0
+        # Добавляем отступ для толщины пера и кликабельной области
+        margin = (self.pen_width / 2.0) + self.CLICKABLE_PADDING
         return base_rect.marginsAdded(
             QtCore.QMarginsF(margin, margin, margin, margin))
     
     def shape(self):
-        """Возвращает форму линии с учетом толщины пера."""
-        path = self.path()
-        if path.isEmpty():
-            return QtGui.QPainterPath()
-        
-        # Создаем stroker для учета толщины пера
-        stroker = QtGui.QPainterPathStroker()
-        stroker.setWidth(self.pen_width)
-        stroker.setCapStyle(QtCore.Qt.PenCapStyle.RoundCap)
-        stroker.setJoinStyle(QtCore.Qt.PenJoinStyle.RoundJoin)
-        
-        # Создаем форму линии с учетом толщины
-        stroked_path = stroker.createStroke(path)
+        """Возвращает прямоугольную кликабельную область, как в PureRef."""
+        path = QtGui.QPainterPath()
+        rect = self.bounding_rect_unselected()
         
         # Если элемент выделен и есть ручки, добавляем области для ручек
         if self.has_selection_handles():
-            result_path = QtGui.QPainterPath(stroked_path)
             margin = self.select_resize_size / 2
+            rect = rect.marginsAdded(
+                QtCore.QMarginsF(margin, margin, margin, margin))
+            path.addRect(rect)
             # Добавляем области для ручек поворота в углах
             for corner in self.corners:
-                result_path.addPath(self.get_rotate_bounds(corner))
-            return result_path
+                path.addPath(self.get_rotate_bounds(corner))
+        else:
+            path.addRect(rect)
         
-        return stroked_path
+        return path
 
     def contains(self, point):
-        """Проверяет, попадает ли точка в область линии."""
-        # Используем shape() для точной проверки
-        return self.shape().contains(point)
+        """Проверяет, попадает ли точка в прямоугольную область линии."""
+        # Используем boundingRect для прямоугольной области клика
+        return self.bounding_rect_unselected().contains(point)
 
-    def paint_selectable(self, painter, option, widget):
-        """Отрисовка рамки выделения по форме линии."""
-        self.paint_debug(painter, option, widget)
-
-        if not self.has_selection_outline():
-            return
-
-        pen = QtGui.QPen(SELECT_COLOR)
-        pen.setWidth(self.SELECT_LINE_WIDTH)
-        pen.setCosmetic(True)
-        pen.setStyle(QtCore.Qt.PenStyle.DashLine)
-        painter.setPen(pen)
-        painter.setBrush(QtGui.QBrush())
-
-        # Рисуем контур линии вместо прямоугольника
-        path = self.path()
-        if not path.isEmpty():
-            # Создаем stroker для контура выделения
-            stroker = QtGui.QPainterPathStroker()
-            stroker.setWidth(self.pen_width + self.SELECT_LINE_WIDTH * 2)
-            stroker.setCapStyle(QtCore.Qt.PenCapStyle.RoundCap)
-            stroker.setJoinStyle(QtCore.Qt.PenJoinStyle.RoundJoin)
-            outline_path = stroker.createStroke(path)
-            painter.drawPath(outline_path)
-
-        # Если элемент выделен, рисуем ручки в углах boundingRect
-        if self.has_selection_handles():
-            pen.setWidth(self.SELECT_HANDLE_SIZE)
-            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-            pen.setStyle(QtCore.Qt.PenStyle.SolidLine)
-            painter.setPen(pen)
-            for corner in self.corners:
-                painter.drawPoint(corner)
 
     def paint(self, painter, option, widget):
         """Отрисовка пути с рамкой выделения."""
