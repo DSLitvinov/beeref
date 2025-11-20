@@ -28,7 +28,7 @@ from PyQt6.QtCore import Qt
 from beeref import commands
 from beeref.config import BeeSettings
 from beeref.constants import COLORS
-from beeref.selection import SelectableMixin
+from beeref.selection import SelectableMixin, SELECT_COLOR
 
 
 logger = logging.getLogger(__name__)
@@ -156,7 +156,7 @@ class BeePixmapItem(BeeItemMixin, QtWidgets.QGraphicsPixmapItem):
 
     @grayscale.setter
     def grayscale(self, value):
-        logger.debug('Setting grayscale for {self} to {value}')
+        logger.debug(f'Setting grayscale for {self} to {value}')
         self._grayscale = value
         if value is True:
             # Using the grayscale image format to convert to grayscale
@@ -226,7 +226,8 @@ class BeePixmapItem(BeeItemMixin, QtWidgets.QGraphicsPixmapItem):
 
     def get_filename_for_export(self, imgformat, save_id_default=None):
         save_id = self.save_id or save_id_default
-        assert save_id is not None
+        if save_id is None:
+            raise ValueError("save_id must be provided for export")
 
         if self.filename:
             basename = os.path.splitext(os.path.basename(self.filename))[0]
@@ -648,6 +649,7 @@ class BeeTextItem(BeeItemMixin, QtWidgets.QGraphicsTextItem):
         self.is_editable = True
         self.edit_mode = False
         self.setDefaultTextColor(QtGui.QColor(*COLORS['Scene:Text']))
+        self.background_color = QtGui.QColor(0, 0, 0, 0)  # Transparent by default
 
     @classmethod
     def create_from_data(cls, **kwargs):
@@ -667,14 +669,27 @@ class BeeTextItem(BeeItemMixin, QtWidgets.QGraphicsTextItem):
 
     def paint(self, painter, option, widget):
         painter.setPen(Qt.PenStyle.NoPen)
-        color = QtGui.QColor(0, 0, 0)
-        color.setAlpha(40)
-        brush = QtGui.QBrush(color)
+        rect = QtWidgets.QGraphicsTextItem.boundingRect(self)
+        
+        # Use background_color if set, otherwise use default semi-transparent black
+        if hasattr(self, 'background_color') and self.background_color.alpha() > 0:
+            brush = QtGui.QBrush(self.background_color)
+        else:
+            color = QtGui.QColor(0, 0, 0)
+            color.setAlpha(40)
+            brush = QtGui.QBrush(color)
+        
         painter.setBrush(brush)
-        painter.drawRect(QtWidgets.QGraphicsTextItem.boundingRect(self))
+        # Draw rounded rectangle with 2px radius
+        painter.drawRoundedRect(rect, 2, 2)
         option.state = QtWidgets.QStyle.StateFlag.State_Enabled
         super().paint(painter, option, widget)
         self.paint_selectable(painter, option, widget)
+    
+    def set_background_color(self, color: QtGui.QColor):
+        """Set the background color for the text item."""
+        self.background_color = color
+        self.update()
 
     def create_copy(self):
         item = BeeTextItem(self.toPlainText())
@@ -684,6 +699,13 @@ class BeeTextItem(BeeItemMixin, QtWidgets.QGraphicsTextItem):
         item.setRotation(self.rotation())
         if self.flip() == -1:
             item.do_flip()
+        # Copy text color
+        item.setDefaultTextColor(self.defaultTextColor())
+        # Copy font
+        item.setFont(self.font())
+        # Copy background color
+        if hasattr(self, 'background_color'):
+            item.set_background_color(self.background_color)
         return item
 
     def enter_edit_mode(self):
@@ -714,21 +736,424 @@ class BeeTextItem(BeeItemMixin, QtWidgets.QGraphicsTextItem):
     def has_selection_handles(self):
         return super().has_selection_handles() and not self.edit_mode
 
-    def keyPressEvent(self, event):
-        if (event.key() in (Qt.Key.Key_Enter, Qt.Key.Key_Return)
-                and event.modifiers() == Qt.KeyboardModifier.NoModifier):
-            self.exit_edit_mode()
-            event.accept()
-            return
-        if (event.key() == Qt.Key.Key_Escape
-                and event.modifiers() == Qt.KeyboardModifier.NoModifier):
-            self.exit_edit_mode(commit=False)
-            event.accept()
-            return
-        super().keyPressEvent(event)
-
     def copy_to_clipboard(self, clipboard):
         clipboard.setText(self.toPlainText())
+
+
+@register_item
+class BeeDrawItem(BeeItemMixin, QtWidgets.QGraphicsPathItem):
+    """Class for freehand drawing items."""
+
+    TYPE = 'draw'
+    CLICKABLE_PADDING = 8.0  # Отступ вокруг линии для увеличения кликабельной области
+
+    def __init__(self, path=None, **kwargs):
+        super().__init__()
+        self.save_id = None
+        logger.debug(f'Initialized {self}')
+        self.is_image = False
+        self.init_selectable()
+        self.is_editable = False  # Рисование не редактируется через двойной клик
+        
+        # Настройки пера по умолчанию
+        self.pen_color = QtGui.QColor(*COLORS['Scene:Text'])
+        self.pen_width = 8
+        self.pen_style = 'solid'  # 'solid', 'dashed', 'arrow', '<-', '<->'
+        self._update_pen()
+        self.setBrush(QtGui.QBrush(QtCore.Qt.BrushStyle.NoBrush))
+        
+        if path:
+            self.setPath(path)
+
+    def setPath(self, path):
+        """Устанавливает путь и обновляет геометрию."""
+        self.prepareGeometryChange()
+        super().setPath(path)
+        self.update()
+
+    @classmethod
+    def create_from_data(cls, **kwargs):
+        data = kwargs.get('data', {})
+        item = cls()
+        
+        # Восстановление пути из данных
+        if 'path' in data and data['path']:
+            path = QtGui.QPainterPath()
+            path_data = data['path']
+            for i, point_data in enumerate(path_data):
+                if i == 0:
+                    path.moveTo(point_data['x'], point_data['y'])
+                else:
+                    path.lineTo(point_data['x'], point_data['y'])
+            item.setPath(path)
+        
+        if 'pen_color' in data:
+            item.pen_color = QtGui.QColor(data['pen_color'])
+        if 'pen_width' in data:
+            item.pen_width = data['pen_width']
+        if 'pen_style' in data:
+            item.pen_style = data['pen_style']
+        item._update_pen()
+        return item
+
+    def __str__(self):
+        return f'Drawing ({self.path().elementCount()} points)'
+
+    def get_extra_save_data(self):
+        """Сохраняет данные рисунка для сериализации."""
+        path = self.path()
+        path_data = []
+        for i in range(path.elementCount()):
+            elem = path.elementAt(i)
+            path_data.append({'x': elem.x, 'y': elem.y})
+        
+        return {
+            'path': path_data,
+            'pen_color': self.pen_color.name(),
+            'pen_width': self.pen_width,
+            'pen_style': self.pen_style,
+        }
+
+    def _update_pen(self):
+        """Обновляет перо с текущими настройками."""
+        if self.pen_style == 'dashed':
+            pen_style = QtCore.Qt.PenStyle.DashLine
+        else:
+            pen_style = QtCore.Qt.PenStyle.SolidLine
+        
+        pen = QtGui.QPen(self.pen_color, self.pen_width, 
+                        pen_style, 
+                        QtCore.Qt.PenCapStyle.RoundCap, 
+                        QtCore.Qt.PenJoinStyle.RoundJoin)
+        self.setPen(pen)
+
+    def set_pen_color(self, color: QtGui.QColor):
+        """Устанавливает цвет пера."""
+        self.pen_color = color
+        self._update_pen()
+        self.update()
+
+    def set_pen_width(self, width: int):
+        """Устанавливает толщину пера."""
+        self.pen_width = max(1, min(width, 50))  # Ограничение 1-50
+        self._update_pen()
+        self.update()
+
+    def set_pen_style(self, style: str):
+        """Устанавливает стиль линии: 'solid', 'dashed', 'arrow', '<-', '<->'."""
+        if style in ('solid', 'dashed', 'arrow', '<-', '<->'):
+            self.pen_style = style
+            self._update_pen()
+            self.update()
+
+    def create_copy(self):
+        item = BeeDrawItem()
+        item.setPath(self.path())
+        item.setPos(self.pos())
+        item.setZValue(self.zValue())
+        item.setScale(self.scale())
+        item.setRotation(self.rotation())
+        item.set_pen_color(self.pen_color)
+        item.set_pen_width(self.pen_width)
+        item.set_pen_style(self.pen_style)
+        if self.flip() == -1:
+            item.do_flip()
+        return item
+
+    def bounding_rect_unselected(self):
+        """Возвращает границы элемента без учета выделения."""
+        path = self.path()
+        if path.isEmpty():
+            return QtCore.QRectF()
+        
+        # Получаем boundingRect напрямую из пути
+        base_rect = path.boundingRect()
+        
+        # Добавляем отступ для толщины пера и кликабельной области
+        margin = (self.pen_width / 2.0) + self.CLICKABLE_PADDING
+        return base_rect.marginsAdded(
+            QtCore.QMarginsF(margin, margin, margin, margin))
+    
+    def shape(self):
+        """Возвращает прямоугольную кликабельную область, как в PureRef."""
+        path = QtGui.QPainterPath()
+        rect = self.bounding_rect_unselected()
+        
+        # Если элемент выделен и есть ручки, добавляем области для ручек
+        if self.has_selection_handles():
+            margin = self.select_resize_size / 2
+            rect = rect.marginsAdded(
+                QtCore.QMarginsF(margin, margin, margin, margin))
+            path.addRect(rect)
+            # Добавляем области для ручек поворота в углах
+            for corner in self.corners:
+                path.addPath(self.get_rotate_bounds(corner))
+        else:
+            path.addRect(rect)
+        
+        return path
+
+    def contains(self, point):
+        """Проверяет, попадает ли точка в прямоугольную область линии."""
+        # Используем boundingRect для прямоугольной области клика
+        return self.bounding_rect_unselected().contains(point)
+
+
+    def _get_path_end_points(self, path):
+        """Получает последние две точки пути для определения направления стрелки."""
+        if path.elementCount() < 2:
+            return None, None
+        
+        # Получаем последнюю точку пути
+        last_point = path.pointAtPercent(1.0)
+        
+        # Получаем предпоследнюю точку (близко к концу)
+        if path.elementCount() >= 2:
+            prev_point = path.pointAtPercent(0.95)  # 95% от пути
+        else:
+            prev_point = path.pointAtPercent(0.0)
+        
+        return prev_point, last_point
+
+    def _get_path_start_points(self, path):
+        """Получает первые две точки пути для определения направления стрелки."""
+        if path.elementCount() < 2:
+            return None, None
+        
+        # Получаем первую точку пути
+        first_point = path.pointAtPercent(0.0)
+        
+        # Получаем вторую точку (близко к началу)
+        if path.elementCount() >= 2:
+            second_point = path.pointAtPercent(0.05)  # 5% от пути
+        else:
+            second_point = path.pointAtPercent(1.0)
+        
+        return first_point, second_point
+
+    def _draw_arrow_right(self, painter, path):
+        """Рисует стрелку вправо в конце линии."""
+        if path.elementCount() < 2:
+            return
+        
+        # Получаем последние две точки для определения направления
+        prev_point, last_point = self._get_path_end_points(path)
+        if prev_point is None or last_point is None:
+            return
+        
+        # Вычисляем направление стрелки
+        dx = last_point.x() - prev_point.x()
+        dy = last_point.y() - prev_point.y()
+        length = (dx * dx + dy * dy) ** 0.5
+        if length == 0:
+            return
+        
+        # Нормализуем вектор направления
+        dx /= length
+        dy /= length
+        
+        # Размер стрелки зависит от толщины линии
+        arrow_size = max(self.pen_width * 3, 8)
+        # Угол стрелки
+        angle = 0.5  # примерно 30 градусов
+        
+        # Координаты конца стрелки
+        end_x = last_point.x()
+        end_y = last_point.y()
+        
+        # Координаты боковых точек стрелки
+        perp_x = -dy
+        perp_y = dx
+        arrow_x1 = end_x - arrow_size * dx + arrow_size * angle * perp_x
+        arrow_y1 = end_y - arrow_size * dy + arrow_size * angle * perp_y
+        arrow_x2 = end_x - arrow_size * dx - arrow_size * angle * perp_x
+        arrow_y2 = end_y - arrow_size * dy - arrow_size * angle * perp_y
+        
+        # Рисуем стрелку
+        arrow_path = QtGui.QPainterPath()
+        arrow_path.moveTo(end_x, end_y)
+        arrow_path.lineTo(arrow_x1, arrow_y1)
+        arrow_path.moveTo(end_x, end_y)
+        arrow_path.lineTo(arrow_x2, arrow_y2)
+        
+        painter.setPen(QtGui.QPen(self.pen_color, self.pen_width,
+                                 QtCore.Qt.PenStyle.SolidLine,
+                                 QtCore.Qt.PenCapStyle.RoundCap,
+                                 QtCore.Qt.PenJoinStyle.RoundJoin))
+        painter.drawPath(arrow_path)
+
+    def _draw_arrow_left(self, painter, path):
+        """Рисует стрелку влево в начале линии."""
+        if path.elementCount() < 2:
+            return
+        
+        # Получаем первые две точки для определения направления
+        first_point, second_point = self._get_path_start_points(path)
+        if first_point is None or second_point is None:
+            return
+        
+        # Вычисляем направление стрелки (от второй точки к первой)
+        dx = first_point.x() - second_point.x()
+        dy = first_point.y() - second_point.y()
+        length = (dx * dx + dy * dy) ** 0.5
+        if length == 0:
+            return
+        
+        # Нормализуем вектор направления
+        dx /= length
+        dy /= length
+        
+        # Размер стрелки зависит от толщины линии
+        arrow_size = max(self.pen_width * 3, 8)
+        # Угол стрелки
+        angle = 0.5  # примерно 30 градусов
+        
+        # Координаты начала стрелки
+        start_x = first_point.x()
+        start_y = first_point.y()
+        
+        # Координаты боковых точек стрелки
+        perp_x = -dy
+        perp_y = dx
+        arrow_x1 = start_x - arrow_size * dx + arrow_size * angle * perp_x
+        arrow_y1 = start_y - arrow_size * dy + arrow_size * angle * perp_y
+        arrow_x2 = start_x - arrow_size * dx - arrow_size * angle * perp_x
+        arrow_y2 = start_y - arrow_size * dy - arrow_size * angle * perp_y
+        
+        # Рисуем стрелку
+        arrow_path = QtGui.QPainterPath()
+        arrow_path.moveTo(start_x, start_y)
+        arrow_path.lineTo(arrow_x1, arrow_y1)
+        arrow_path.moveTo(start_x, start_y)
+        arrow_path.lineTo(arrow_x2, arrow_y2)
+        
+        painter.setPen(QtGui.QPen(self.pen_color, self.pen_width,
+                                 QtCore.Qt.PenStyle.SolidLine,
+                                 QtCore.Qt.PenCapStyle.RoundCap,
+                                 QtCore.Qt.PenJoinStyle.RoundJoin))
+        painter.drawPath(arrow_path)
+
+    def _draw_arrow_both(self, painter, path):
+        """Рисует стрелки в обе стороны линии."""
+        if path.elementCount() < 2:
+            return
+        
+        # Рисуем стрелку вправо (в конце)
+        prev_point, last_point = self._get_path_end_points(path)
+        if prev_point is not None and last_point is not None:
+            dx = last_point.x() - prev_point.x()
+            dy = last_point.y() - prev_point.y()
+            length = (dx * dx + dy * dy) ** 0.5
+            if length > 0:
+                dx /= length
+                dy /= length
+                arrow_size = max(self.pen_width * 3, 8)
+                angle = 0.5
+                end_x = last_point.x()
+                end_y = last_point.y()
+                perp_x = -dy
+                perp_y = dx
+                arrow_x1 = end_x - arrow_size * dx + arrow_size * angle * perp_x
+                arrow_y1 = end_y - arrow_size * dy + arrow_size * angle * perp_y
+                arrow_x2 = end_x - arrow_size * dx - arrow_size * angle * perp_x
+                arrow_y2 = end_y - arrow_size * dy - arrow_size * angle * perp_y
+                
+                arrow_path = QtGui.QPainterPath()
+                arrow_path.moveTo(end_x, end_y)
+                arrow_path.lineTo(arrow_x1, arrow_y1)
+                arrow_path.moveTo(end_x, end_y)
+                arrow_path.lineTo(arrow_x2, arrow_y2)
+                
+                painter.setPen(QtGui.QPen(self.pen_color, self.pen_width,
+                                         QtCore.Qt.PenStyle.SolidLine,
+                                         QtCore.Qt.PenCapStyle.RoundCap,
+                                         QtCore.Qt.PenJoinStyle.RoundJoin))
+                painter.drawPath(arrow_path)
+        
+        # Рисуем стрелку влево (в начале)
+        first_point, second_point = self._get_path_start_points(path)
+        if first_point is not None and second_point is not None:
+            dx = first_point.x() - second_point.x()
+            dy = first_point.y() - second_point.y()
+            length = (dx * dx + dy * dy) ** 0.5
+            if length > 0:
+                dx /= length
+                dy /= length
+                arrow_size = max(self.pen_width * 3, 8)
+                angle = 0.5
+                start_x = first_point.x()
+                start_y = first_point.y()
+                perp_x = -dy
+                perp_y = dx
+                arrow_x1 = start_x - arrow_size * dx + arrow_size * angle * perp_x
+                arrow_y1 = start_y - arrow_size * dy + arrow_size * angle * perp_y
+                arrow_x2 = start_x - arrow_size * dx - arrow_size * angle * perp_x
+                arrow_y2 = start_y - arrow_size * dy - arrow_size * angle * perp_y
+                
+                arrow_path = QtGui.QPainterPath()
+                arrow_path.moveTo(start_x, start_y)
+                arrow_path.lineTo(arrow_x1, arrow_y1)
+                arrow_path.moveTo(start_x, start_y)
+                arrow_path.lineTo(arrow_x2, arrow_y2)
+                
+                painter.setPen(QtGui.QPen(self.pen_color, self.pen_width,
+                                         QtCore.Qt.PenStyle.SolidLine,
+                                         QtCore.Qt.PenCapStyle.RoundCap,
+                                         QtCore.Qt.PenJoinStyle.RoundJoin))
+                painter.drawPath(arrow_path)
+
+    def paint(self, painter, option, widget):
+        """Отрисовка пути с рамкой выделения."""
+        # Отключаем стандартную отрисовку Qt для выделенных элементов
+        option.state &= ~QtWidgets.QStyle.StateFlag.State_Selected
+        option.state &= ~QtWidgets.QStyle.StateFlag.State_HasFocus
+        # Рисуем основную линию
+        super().paint(painter, option, widget)
+        
+        path = self.path()
+        # Рисуем стрелку в зависимости от стиля
+        if self.pen_style == 'arrow':
+            self._draw_arrow_right(painter, path)
+        elif self.pen_style == '<-':
+            self._draw_arrow_left(painter, path)
+        elif self.pen_style == '<->':
+            self._draw_arrow_both(painter, path)
+        
+        self.paint_selectable(painter, option, widget)
+
+    def paint_debug(self, painter, option, widget):
+        """Переопределяем для полного отключения отладочной информации."""
+        # Полностью отключаем отладочную информацию для линий
+        pass
+
+    def paint_selectable(self, painter, option, widget):
+        """Переопределяем для убирания пунктирной обводки (отладочной информации)."""
+        # Не вызываем paint_debug, чтобы убрать пунктирную обводку
+        # self.paint_debug(painter, option, widget)
+
+        if not self.has_selection_outline():
+            return
+
+        pen = QtGui.QPen(SELECT_COLOR)
+        pen.setWidth(self.SELECT_LINE_WIDTH)
+        pen.setCosmetic(True)
+        painter.setPen(pen)
+        painter.setBrush(QtGui.QBrush())
+
+        # Draw the main selection rectangle
+        painter.drawRect(self.bounding_rect_unselected())
+
+        # If it's a single selection, draw the handles:
+        if self.has_selection_handles():
+            pen.setWidth(self.SELECT_HANDLE_SIZE)
+            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            painter.setPen(pen)
+            for corner in self.corners:
+                painter.drawPoint(corner)
+
+    def copy_to_clipboard(self, clipboard):
+        """Для рисования копирование не поддерживается."""
+        pass
 
 
 @register_item
@@ -804,3 +1229,8 @@ class BeeErrorItem(BeeItemMixin, QtWidgets.QGraphicsTextItem):
 
     def copy_to_clipboard(self, clipboard):
         clipboard.setText(self.toPlainText())
+
+
+# Импортируем GIF item для регистрации в item_registry
+from beeref.gif_item import BeeGifItem  # noqa: E402, F401
+
