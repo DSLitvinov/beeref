@@ -64,6 +64,7 @@ class GifFloatingMenu(FloatingMenu):
         self.speed_combo = QtWidgets.QComboBox(self)
         self.speed_combo.setObjectName("FloatingMenuGifSpeed")
         self.speed_combo.setMinimumWidth(40)
+        self.speed_combo.setIconSize(QtCore.QSize(32, 32))
         
         for speed in self.SPEED_VALUES:
             label = self._format_speed_label(speed)

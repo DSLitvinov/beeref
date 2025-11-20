@@ -142,6 +142,7 @@ class FloatingMenu(QtWidgets.QWidget):
         button.setCheckable(checkable)
         if icon:
             button.setIcon(icon)
+            button.setIconSize(QtCore.QSize(32, 32))
         button.setProperty("floatingButton", True)
         if callback:
             # Connect directly - button events are handled independently

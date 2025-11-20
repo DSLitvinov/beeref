@@ -101,6 +101,7 @@ class DrawFloatingMenu(FloatingMenu):
         combo = UpwardComboBox(self)
         combo.setObjectName("FloatingMenuLineStyle")
         combo.setMinimumWidth(40)
+        combo.setIconSize(QtCore.QSize(32, 32))
         
         # Добавляем элементы с иконками
         combo.addItem(solid_icon, "", 'solid')

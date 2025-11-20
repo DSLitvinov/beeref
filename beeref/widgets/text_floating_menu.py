@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from PyQt6 import QtGui, QtWidgets
+from PyQt6 import QtCore, QtGui, QtWidgets
 
 from beeref.assets import BeeAssets
 from beeref.widgets.floating_menu import FloatingMenu
@@ -83,6 +83,7 @@ class TextFloatingMenu(FloatingMenu):
         self.font_combo = QtWidgets.QComboBox(self)
         self.font_combo.setObjectName("FloatingMenuFontFamily")
         self.font_combo.setMinimumWidth(40)
+        self.font_combo.setIconSize(QtCore.QSize(32, 32))
         self.font_combo.setEditable(False)
         self.font_combo.setInsertPolicy(
             QtWidgets.QComboBox.InsertPolicy.NoInsert)
