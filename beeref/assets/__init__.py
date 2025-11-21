@@ -59,20 +59,20 @@ class BeeAssets:
             pixmap, int(hotspot[0]/scaling), int(hotspot[1]/scaling))
 
     def cursor_from_svg(self, filename, hotspot, size=24):
-        """Создает курсор из SVG файла."""
+        """Creates cursor from SVG file."""
         app = QtWidgets.QApplication.instance()
         scaling = app.primaryScreen().devicePixelRatio()
         
-        # Загружаем SVG
+        # Load SVG
         svg_path = str(self.PATH.joinpath(filename))
         renderer = QtSvg.QSvgRenderer(svg_path)
         
-        # Создаем pixmap нужного размера
+        # Create pixmap of required size
         pixmap_size = int(size * scaling)
         pixmap = QtGui.QPixmap(pixmap_size, pixmap_size)
-        pixmap.fill(QtGui.QColor(0, 0, 0, 0))  # Прозрачный фон
+        pixmap.fill(QtGui.QColor(0, 0, 0, 0))  # Transparent background
         
-        # Рендерим SVG в pixmap
+        # Render SVG to pixmap
         painter = QtGui.QPainter(pixmap)
         renderer.render(painter)
         painter.end()

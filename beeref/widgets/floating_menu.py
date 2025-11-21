@@ -39,10 +39,10 @@ class FloatingMenu(QtWidgets.QWidget):
         self._cached_viewport_size: Optional[QtCore.QSize] = None
         self._cached_window_pos: Optional[QtCore.QPoint] = None
 
-        # Таймер для отслеживания перемещения главного окна
+        # Timer for tracking main window movement
         self._position_timer = QtCore.QTimer(self)
         self._position_timer.timeout.connect(self._check_window_position)
-        self._position_timer.setInterval(50)  # Проверка каждые 50мс
+        self._position_timer.setInterval(50)  # Check every 50ms
 
         # Main layout with uniform spacing
         self._layout = QtWidgets.QHBoxLayout(self)
@@ -56,7 +56,7 @@ class FloatingMenu(QtWidgets.QWidget):
         self.hide()
 
     def _check_window_position(self) -> None:
-        """Проверяет позицию viewport и обновляет позицию меню при необходимости."""
+        """Checks viewport position and updates menu position if needed."""
         if not self.isVisible():
             return
         
@@ -68,11 +68,11 @@ class FloatingMenu(QtWidgets.QWidget):
         if viewport is None:
             return
         
-        # Получаем позицию viewport в глобальных координатах
+        # Get viewport position in global coordinates
         view_rect = viewport.rect()
         current_viewport_pos = viewport.mapToGlobal(view_rect.topLeft())
         
-        # Если позиция viewport изменилась, обновляем позицию меню
+        # If viewport position changed, update menu position
         if self._cached_window_pos is not None and self._cached_window_pos != current_viewport_pos:
             self.update_position()
         
@@ -80,50 +80,50 @@ class FloatingMenu(QtWidgets.QWidget):
 
     def _apply_rounded_mask(self) -> None:
         """
-        Применяет закругленную маску к виджету с антиалиасингом.
-        Реализация на основе подхода из статьи VK Teams.
+        Applies rounded mask to widget with antialiasing.
+        Implementation based on approach from VK Teams article.
         """
         size = self.size()
         if size.width() == 0 or size.height() == 0:
             return
         
-        # Для более плавного сглаживания используем QBitmap с антиалиасингом
-        # Создаем изображение с увеличенным разрешением (как в статье)
+        # Use QBitmap with antialiasing for smoother rendering
+        # Create image with increased resolution (as in article)
         scale_factor = 2
         scaled_size = QtCore.QSize(
             int(size.width() * scale_factor),
             int(size.height() * scale_factor)
         )
         
-        # Создаем QPixmap для рисования с антиалиасингом
+        # Create QPixmap for drawing with antialiasing
         pixmap = QtGui.QPixmap(scaled_size)
         pixmap.fill(QtCore.Qt.GlobalColor.transparent)
         
         painter = QtGui.QPainter(pixmap)
         painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing, True)
         painter.setPen(QtCore.Qt.PenStyle.NoPen)
-        painter.setBrush(QtCore.Qt.GlobalColor.black)  # Черный для маски
+        painter.setBrush(QtCore.Qt.GlobalColor.black)  # Black for mask
         
-        # Рисуем закругленный прямоугольник на увеличенном разрешении
+        # Draw rounded rectangle at increased resolution
         scaled_rect = QtCore.QRectF(0, 0, scaled_size.width(), scaled_size.height())
         scaled_radius = self.CORNER_RADIUS * scale_factor
         painter.drawRoundedRect(scaled_rect, scaled_radius, scaled_radius)
         painter.end()
         
-        # Масштабируем обратно с сглаживанием
+        # Scale back with smoothing
         pixmap = pixmap.scaled(
             size,
             QtCore.Qt.AspectRatioMode.IgnoreAspectRatio,
             QtCore.Qt.TransformationMode.SmoothTransformation
         )
         
-        # Преобразуем в QBitmap для маски
-        # В маске: непрозрачные пиксели = видимые области, прозрачные = невидимые
+        # Convert to QBitmap for mask
+        # In mask: opaque pixels = visible areas, transparent = invisible
         image = pixmap.toImage()
-        # Создаем маску из непрозрачных пикселей
+        # Create mask from opaque pixels
         bitmap = QtGui.QBitmap.fromImage(image.createAlphaMask())
         
-        # Применяем маску
+        # Apply mask
         self.setMask(bitmap)
 
     def add_widget(self, widget: QtWidgets.QWidget) -> QtWidgets.QWidget:
@@ -172,18 +172,18 @@ class FloatingMenu(QtWidgets.QWidget):
         self._cached_viewport_size = None
         self._cached_window_pos = None
         self.update_position()
-        # Запускаем таймер для отслеживания перемещения окна
+        # Start timer for tracking window movement
         self._position_timer.start()
         # Ensure menu is on top after positioning
         self.raise_()
-        # Возвращаем фокус view, чтобы события клавиатуры обрабатывались правильно
-        # FloatingMenu не должен перехватывать фокус, так как он имеет NoFocus
+        # Return focus to view so keyboard events are handled correctly
+        # FloatingMenu should not intercept focus as it has NoFocus
         if self.view:
             self.view.setFocus()
 
     def hide_menu(self) -> None:
         self.current_item = None
-        # Останавливаем таймер
+        # Stop timer
         self._position_timer.stop()
         # Clear cache when hiding menu
         self._cached_position = None
@@ -207,7 +207,7 @@ class FloatingMenu(QtWidgets.QWidget):
         view_rect = viewport.rect()
         viewport_size = view_rect.size()
         
-        # Получаем текущую позицию viewport для проверки изменений
+        # Get current viewport position for change detection
         current_viewport_pos = viewport.mapToGlobal(view_rect.topLeft())
         
         # Check if viewport size and position changed
@@ -232,28 +232,28 @@ class FloatingMenu(QtWidgets.QWidget):
         bottom_right_global = viewport.mapToGlobal(view_rect.bottomRight())
         top_right_global = viewport.mapToGlobal(view_rect.topRight())
 
-        # Получаем границы viewport в глобальных координатах
+        # Get viewport bounds in global coordinates
         viewport_left = top_left_global.x()
         viewport_right = top_right_global.x()
         viewport_top = top_left_global.y()
         viewport_bottom = bottom_left_global.y()
         viewport_width = viewport_right - viewport_left
 
-        # Вычисляем позицию по X (центрируем, но не выходим за границы)
+        # Calculate X position (center, but don't go beyond boundaries)
         x = viewport_left + max(0, (viewport_width - width) // 2)
-        # Ограничиваем, чтобы меню не выходило за левую и правую границы
+        # Limit to prevent menu from going beyond left and right boundaries
         x = max(viewport_left, min(x, viewport_right - width))
 
-        # Вычисляем позицию по Y (снизу с отступом)
+        # Calculate Y position (bottom with margin)
         y = viewport_bottom - height - self.BOTTOM_MARGIN
-        # Ограничиваем, чтобы меню не выходило за верхнюю границу
-        # Если меню не помещается снизу, размещаем его сверху
+        # Limit to prevent menu from going beyond top boundary
+        # If menu doesn't fit at bottom, place it at top
         if y < viewport_top:
             y = viewport_top + self.BOTTOM_MARGIN
-        # Также проверяем, что меню не выходит за нижнюю границу
+        # Also check that menu doesn't go beyond bottom boundary
         if y + height > viewport_bottom:
             y = viewport_bottom - height - self.BOTTOM_MARGIN
-            # Если и так не помещается, размещаем сверху
+            # If still doesn't fit, place at top
             if y < viewport_top:
                 y = viewport_top + self.BOTTOM_MARGIN
 
@@ -265,7 +265,7 @@ class FloatingMenu(QtWidgets.QWidget):
             self._cached_position = new_position
             self._cached_viewport_size = viewport_size
             self._cached_window_pos = current_viewport_pos
-            # Обновляем маску после изменения размера/позиции
+            # Update mask after size/position change
             self._apply_rounded_mask()
 
     def parentWidget(self):
@@ -289,6 +289,6 @@ class FloatingMenu(QtWidgets.QWidget):
         super().mouseReleaseEvent(event)
 
     def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
-        """Обновляет маску при изменении размера виджета."""
+        """Updates mask when widget size changes."""
         super().resizeEvent(event)
         self._apply_rounded_mask()

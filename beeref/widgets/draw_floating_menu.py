@@ -25,15 +25,15 @@ class UpwardComboBox(QtWidgets.QComboBox):
     def showPopup(self):
         """Override to show popup above the combobox."""
         super().showPopup()
-        # Используем QTimer для получения popup после его создания
+        # Use QTimer to get popup after it's created
         QtCore.QTimer.singleShot(0, self._reposition_popup)
     
     def _reposition_popup(self):
-        """Перемещает popup выше combobox."""
-        # Ищем активный popup виджет
+        """Moves popup above the combobox."""
+        # Find active popup widget
         popup = QtWidgets.QApplication.activePopupWidget()
         if not popup:
-            # Альтернативный способ - найти через view
+            # Alternative method - find through view
             view = self.view()
             if view:
                 popup = view.parent()
@@ -41,9 +41,9 @@ class UpwardComboBox(QtWidgets.QComboBox):
                     popup = popup.parent()
         
         if popup:
-            # Получаем глобальную позицию combobox
+            # Get global position of combobox
             global_pos = self.mapToGlobal(QtCore.QPoint(0, 0))
-            # Вычисляем новую позицию выше combobox
+            # Calculate new position above combobox
             popup_height = popup.height()
             new_y = global_pos.y() - popup_height
             popup.move(global_pos.x(), new_y)
@@ -56,7 +56,7 @@ class DrawFloatingMenu(FloatingMenu):
         super().__init__(parent, view)
         self.current_item: Optional["BeeDrawItem"] = None
         
-        # Кнопка выбора цвета через colorpicker
+        # Color selection button via colorpicker
         assets = BeeAssets()
         icons_path = assets.PATH.joinpath('icons')
         palette_icon = QtGui.QIcon(str(icons_path.joinpath('palette.svg')))
@@ -68,15 +68,15 @@ class DrawFloatingMenu(FloatingMenu):
         )
         self.color_btn.setToolTip("Color")
         
-        # Combobox для выбора стиля линии
+        # Combobox for line style selection
         self.add_separator()
         self.style_combo = self.add_style_combobox()
         
-        # Селектор толщины пера
+        # Pen width selector
         self.add_separator()
         self.width_slider = self.add_width_slider()
         
-        # Кнопка закрытия меню (отмена режима рисования)
+        # Close menu button (cancel drawing mode)
         self.add_separator()
         close_icon = QtGui.QIcon(str(icons_path.joinpath('close.svg')))
         self.close_button = self.add_button(
@@ -87,11 +87,11 @@ class DrawFloatingMenu(FloatingMenu):
         self.close_button.setToolTip("Close")
 
     def add_style_combobox(self):
-        """Добавляет combobox для выбора стиля линии."""
+        """Adds combobox for line style selection."""
         assets = BeeAssets()
         icons_path = assets.PATH.joinpath('icons')
         
-        # Загружаем иконки для стилей
+        # Load icons for styles
         solid_icon = QtGui.QIcon(str(icons_path.joinpath('line-solid.svg')))
         dashed_icon = QtGui.QIcon(str(icons_path.joinpath('line-dashed.svg')))
         arrow_icon = QtGui.QIcon(str(icons_path.joinpath('line-arrow.svg')))
@@ -103,20 +103,20 @@ class DrawFloatingMenu(FloatingMenu):
         combo.setMinimumWidth(40)
         combo.setIconSize(QtCore.QSize(32, 32))
         
-        # Добавляем элементы с иконками
+        # Add items with icons
         combo.addItem(solid_icon, "", 'solid')
         combo.addItem(dashed_icon, "", 'dashed')
         combo.addItem(arrow_icon, "", 'arrow')
         combo.addItem(arrow_left_icon, "", '<-')
         combo.addItem(arrow_both_icon, "", '<->')
-        # Устанавливаем иконки для элементов
+        # Set icons for items
         combo.setItemIcon(0, solid_icon)
         combo.setItemIcon(1, dashed_icon)
         combo.setItemIcon(2, arrow_icon)
         combo.setItemIcon(3, arrow_left_icon)
         combo.setItemIcon(4, arrow_both_icon)
         
-        combo.setCurrentIndex(0)  # По умолчанию solid
+        combo.setCurrentIndex(0)  # Default to solid
         combo.currentIndexChanged.connect(self._on_style_changed)
         combo.setToolTip("Line style")
         
@@ -124,7 +124,7 @@ class DrawFloatingMenu(FloatingMenu):
         return combo
 
     def _on_color_clicked(self) -> None:
-        """Открывает диалог выбора цвета."""
+        """Opens color selection dialog."""
         if not self.current_item:
             return
         
@@ -136,7 +136,7 @@ class DrawFloatingMenu(FloatingMenu):
         self.set_pen_color(color)
 
     def _on_style_changed(self, index: int) -> None:
-        """Обработчик изменения стиля линии."""
+        """Handler for line style change."""
         if not self.current_item:
             return
         style = self.style_combo.itemData(index)
@@ -144,7 +144,7 @@ class DrawFloatingMenu(FloatingMenu):
             self.set_pen_style(style)
 
     def add_width_slider(self):
-        """Добавляет слайдер для выбора толщины пера."""
+        """Adds slider for pen width selection."""
         container = QtWidgets.QWidget()
         layout = QtWidgets.QHBoxLayout(container)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -162,11 +162,11 @@ class DrawFloatingMenu(FloatingMenu):
         return slider
 
     def show_for_item(self, item: "BeeDrawItem") -> None:
-        """Показывает меню для выбранного элемента рисования."""
+        """Shows menu for selected drawing item."""
         self.current_item = item
         if item:
             self.width_slider.setValue(item.pen_width)
-            # Устанавливаем текущий стиль в combobox
+            # Set current style in combobox
             style_index = self.style_combo.findData(item.pen_style)
             if style_index >= 0:
                 self.style_combo.blockSignals(True)
@@ -175,29 +175,29 @@ class DrawFloatingMenu(FloatingMenu):
         super().show_for_item(item)
 
     def set_pen_color(self, color: QtGui.QColor):
-        """Устанавливает цвет пера для выбранного элемента."""
+        """Sets pen color for selected item."""
         if self.current_item:
             self.current_item.set_pen_color(color)
 
     def set_pen_width(self, width: int):
-        """Устанавливает толщину пера для выбранного элемента."""
+        """Sets pen width for selected item."""
         if self.current_item:
             self.current_item.set_pen_width(width)
 
     def set_pen_style(self, style: str):
-        """Устанавливает стиль линии для выбранного элемента."""
+        """Sets line style for selected item."""
         if self.current_item:
             self.current_item.set_pen_style(style)
 
     def _on_close_clicked(self) -> None:
-        """Закрывает меню и отменяет режим рисования."""
+        """Closes menu and cancels drawing mode."""
         self.view.cancel_drawing_mode()
         self.hide_menu()
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
-        """Обрабатывает нажатия клавиш."""
+        """Handles key press events."""
         if event.key() == QtCore.Qt.Key.Key_Escape:
-            # ESC закрывает меню и отменяет режим рисования
+            # ESC closes menu and cancels drawing mode
             self.view.cancel_drawing_mode()
             self.hide_menu()
             event.accept()

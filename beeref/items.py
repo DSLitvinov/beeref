@@ -745,7 +745,7 @@ class BeeDrawItem(BeeItemMixin, QtWidgets.QGraphicsPathItem):
     """Class for freehand drawing items."""
 
     TYPE = 'draw'
-    CLICKABLE_PADDING = 8.0  # Отступ вокруг линии для увеличения кликабельной области
+    CLICKABLE_PADDING = 8.0  # Padding around line to increase clickable area
 
     def __init__(self, path=None, **kwargs):
         super().__init__()
@@ -753,9 +753,9 @@ class BeeDrawItem(BeeItemMixin, QtWidgets.QGraphicsPathItem):
         logger.debug(f'Initialized {self}')
         self.is_image = False
         self.init_selectable()
-        self.is_editable = False  # Рисование не редактируется через двойной клик
+        self.is_editable = False  # Drawing is not editable via double-click
         
-        # Настройки пера по умолчанию
+        # Default pen settings
         self.pen_color = QtGui.QColor(*COLORS['Scene:Text'])
         self.pen_width = 8
         self.pen_style = 'solid'  # 'solid', 'dashed', 'arrow', '<-', '<->'
@@ -766,7 +766,7 @@ class BeeDrawItem(BeeItemMixin, QtWidgets.QGraphicsPathItem):
             self.setPath(path)
 
     def setPath(self, path):
-        """Устанавливает путь и обновляет геометрию."""
+        """Sets path and updates geometry."""
         self.prepareGeometryChange()
         super().setPath(path)
         self.update()
@@ -776,7 +776,7 @@ class BeeDrawItem(BeeItemMixin, QtWidgets.QGraphicsPathItem):
         data = kwargs.get('data', {})
         item = cls()
         
-        # Восстановление пути из данных
+        # Restore path from data
         if 'path' in data and data['path']:
             path = QtGui.QPainterPath()
             path_data = data['path']
@@ -800,7 +800,7 @@ class BeeDrawItem(BeeItemMixin, QtWidgets.QGraphicsPathItem):
         return f'Drawing ({self.path().elementCount()} points)'
 
     def get_extra_save_data(self):
-        """Сохраняет данные рисунка для сериализации."""
+        """Saves drawing data for serialization."""
         path = self.path()
         path_data = []
         for i in range(path.elementCount()):
@@ -815,7 +815,7 @@ class BeeDrawItem(BeeItemMixin, QtWidgets.QGraphicsPathItem):
         }
 
     def _update_pen(self):
-        """Обновляет перо с текущими настройками."""
+        """Updates pen with current settings."""
         if self.pen_style == 'dashed':
             pen_style = QtCore.Qt.PenStyle.DashLine
         else:
@@ -828,19 +828,19 @@ class BeeDrawItem(BeeItemMixin, QtWidgets.QGraphicsPathItem):
         self.setPen(pen)
 
     def set_pen_color(self, color: QtGui.QColor):
-        """Устанавливает цвет пера."""
+        """Sets pen color."""
         self.pen_color = color
         self._update_pen()
         self.update()
 
     def set_pen_width(self, width: int):
-        """Устанавливает толщину пера."""
-        self.pen_width = max(1, min(width, 50))  # Ограничение 1-50
+        """Sets pen width."""
+        self.pen_width = max(1, min(width, 50))  # Limit 1-50
         self._update_pen()
         self.update()
 
     def set_pen_style(self, style: str):
-        """Устанавливает стиль линии: 'solid', 'dashed', 'arrow', '<-', '<->'."""
+        """Sets line style: 'solid', 'dashed', 'arrow', '<-', '<->'."""
         if style in ('solid', 'dashed', 'arrow', '<-', '<->'):
             self.pen_style = style
             self._update_pen()
@@ -861,31 +861,31 @@ class BeeDrawItem(BeeItemMixin, QtWidgets.QGraphicsPathItem):
         return item
 
     def bounding_rect_unselected(self):
-        """Возвращает границы элемента без учета выделения."""
+        """Returns item bounds without selection."""
         path = self.path()
         if path.isEmpty():
             return QtCore.QRectF()
         
-        # Получаем boundingRect напрямую из пути
+        # Get boundingRect directly from path
         base_rect = path.boundingRect()
         
-        # Добавляем отступ для толщины пера и кликабельной области
+        # Add margin for pen width and clickable area
         margin = (self.pen_width / 2.0) + self.CLICKABLE_PADDING
         return base_rect.marginsAdded(
             QtCore.QMarginsF(margin, margin, margin, margin))
     
     def shape(self):
-        """Возвращает прямоугольную кликабельную область, как в PureRef."""
+        """Returns rectangular clickable area, like in PureRef."""
         path = QtGui.QPainterPath()
         rect = self.bounding_rect_unselected()
         
-        # Если элемент выделен и есть ручки, добавляем области для ручек
+        # If item is selected and has handles, add handle areas
         if self.has_selection_handles():
             margin = self.select_resize_size / 2
             rect = rect.marginsAdded(
                 QtCore.QMarginsF(margin, margin, margin, margin))
             path.addRect(rect)
-            # Добавляем области для ручек поворота в углах
+            # Add rotation handle areas at corners
             for corner in self.corners:
                 path.addPath(self.get_rotate_bounds(corner))
         else:
@@ -894,74 +894,74 @@ class BeeDrawItem(BeeItemMixin, QtWidgets.QGraphicsPathItem):
         return path
 
     def contains(self, point):
-        """Проверяет, попадает ли точка в прямоугольную область линии."""
-        # Используем boundingRect для прямоугольной области клика
+        """Checks if point falls within rectangular line area."""
+        # Use boundingRect for rectangular click area
         return self.bounding_rect_unselected().contains(point)
 
 
     def _get_path_end_points(self, path):
-        """Получает последние две точки пути для определения направления стрелки."""
+        """Gets last two path points to determine arrow direction."""
         if path.elementCount() < 2:
             return None, None
         
-        # Получаем последнюю точку пути
+        # Get last path point
         last_point = path.pointAtPercent(1.0)
         
-        # Получаем предпоследнюю точку (близко к концу)
+        # Get second-to-last point (close to end)
         if path.elementCount() >= 2:
-            prev_point = path.pointAtPercent(0.95)  # 95% от пути
+            prev_point = path.pointAtPercent(0.95)  # 95% of path
         else:
             prev_point = path.pointAtPercent(0.0)
         
         return prev_point, last_point
 
     def _get_path_start_points(self, path):
-        """Получает первые две точки пути для определения направления стрелки."""
+        """Gets first two path points to determine arrow direction."""
         if path.elementCount() < 2:
             return None, None
         
-        # Получаем первую точку пути
+        # Get first path point
         first_point = path.pointAtPercent(0.0)
         
-        # Получаем вторую точку (близко к началу)
+        # Get second point (close to start)
         if path.elementCount() >= 2:
-            second_point = path.pointAtPercent(0.05)  # 5% от пути
+            second_point = path.pointAtPercent(0.05)  # 5% of path
         else:
             second_point = path.pointAtPercent(1.0)
         
         return first_point, second_point
 
     def _draw_arrow_right(self, painter, path):
-        """Рисует стрелку вправо в конце линии."""
+        """Draws arrow to the right at the end of line."""
         if path.elementCount() < 2:
             return
         
-        # Получаем последние две точки для определения направления
+        # Get last two points to determine direction
         prev_point, last_point = self._get_path_end_points(path)
         if prev_point is None or last_point is None:
             return
         
-        # Вычисляем направление стрелки
+        # Calculate arrow direction
         dx = last_point.x() - prev_point.x()
         dy = last_point.y() - prev_point.y()
         length = (dx * dx + dy * dy) ** 0.5
         if length == 0:
             return
         
-        # Нормализуем вектор направления
+        # Normalize direction vector
         dx /= length
         dy /= length
         
-        # Размер стрелки зависит от толщины линии
+        # Arrow size depends on line width
         arrow_size = max(self.pen_width * 3, 8)
-        # Угол стрелки
-        angle = 0.5  # примерно 30 градусов
+        # Arrow angle
+        angle = 0.5  # approximately 30 degrees
         
-        # Координаты конца стрелки
+        # Arrow end coordinates
         end_x = last_point.x()
         end_y = last_point.y()
         
-        # Координаты боковых точек стрелки
+        # Arrow side point coordinates
         perp_x = -dy
         perp_y = dx
         arrow_x1 = end_x - arrow_size * dx + arrow_size * angle * perp_x
@@ -969,7 +969,7 @@ class BeeDrawItem(BeeItemMixin, QtWidgets.QGraphicsPathItem):
         arrow_x2 = end_x - arrow_size * dx - arrow_size * angle * perp_x
         arrow_y2 = end_y - arrow_size * dy - arrow_size * angle * perp_y
         
-        # Рисуем стрелку
+        # Draw arrow
         arrow_path = QtGui.QPainterPath()
         arrow_path.moveTo(end_x, end_y)
         arrow_path.lineTo(arrow_x1, arrow_y1)
@@ -983,36 +983,36 @@ class BeeDrawItem(BeeItemMixin, QtWidgets.QGraphicsPathItem):
         painter.drawPath(arrow_path)
 
     def _draw_arrow_left(self, painter, path):
-        """Рисует стрелку влево в начале линии."""
+        """Draws arrow to the left at the start of line."""
         if path.elementCount() < 2:
             return
         
-        # Получаем первые две точки для определения направления
+        # Get first two points to determine direction
         first_point, second_point = self._get_path_start_points(path)
         if first_point is None or second_point is None:
             return
         
-        # Вычисляем направление стрелки (от второй точки к первой)
+        # Calculate arrow direction (from second point to first)
         dx = first_point.x() - second_point.x()
         dy = first_point.y() - second_point.y()
         length = (dx * dx + dy * dy) ** 0.5
         if length == 0:
             return
         
-        # Нормализуем вектор направления
+        # Normalize direction vector
         dx /= length
         dy /= length
         
-        # Размер стрелки зависит от толщины линии
+        # Arrow size depends on line width
         arrow_size = max(self.pen_width * 3, 8)
-        # Угол стрелки
-        angle = 0.5  # примерно 30 градусов
+        # Arrow angle
+        angle = 0.5  # approximately 30 degrees
         
-        # Координаты начала стрелки
+        # Arrow start coordinates
         start_x = first_point.x()
         start_y = first_point.y()
         
-        # Координаты боковых точек стрелки
+        # Arrow side point coordinates
         perp_x = -dy
         perp_y = dx
         arrow_x1 = start_x - arrow_size * dx + arrow_size * angle * perp_x
@@ -1020,7 +1020,7 @@ class BeeDrawItem(BeeItemMixin, QtWidgets.QGraphicsPathItem):
         arrow_x2 = start_x - arrow_size * dx - arrow_size * angle * perp_x
         arrow_y2 = start_y - arrow_size * dy - arrow_size * angle * perp_y
         
-        # Рисуем стрелку
+        # Draw arrow
         arrow_path = QtGui.QPainterPath()
         arrow_path.moveTo(start_x, start_y)
         arrow_path.lineTo(arrow_x1, arrow_y1)
@@ -1034,11 +1034,11 @@ class BeeDrawItem(BeeItemMixin, QtWidgets.QGraphicsPathItem):
         painter.drawPath(arrow_path)
 
     def _draw_arrow_both(self, painter, path):
-        """Рисует стрелки в обе стороны линии."""
+        """Draws arrows on both sides of line."""
         if path.elementCount() < 2:
             return
         
-        # Рисуем стрелку вправо (в конце)
+        # Draw arrow to the right (at end)
         prev_point, last_point = self._get_path_end_points(path)
         if prev_point is not None and last_point is not None:
             dx = last_point.x() - prev_point.x()
@@ -1070,7 +1070,7 @@ class BeeDrawItem(BeeItemMixin, QtWidgets.QGraphicsPathItem):
                                          QtCore.Qt.PenJoinStyle.RoundJoin))
                 painter.drawPath(arrow_path)
         
-        # Рисуем стрелку влево (в начале)
+        # Draw arrow to the left (at start)
         first_point, second_point = self._get_path_start_points(path)
         if first_point is not None and second_point is not None:
             dx = first_point.x() - second_point.x()
@@ -1103,15 +1103,15 @@ class BeeDrawItem(BeeItemMixin, QtWidgets.QGraphicsPathItem):
                 painter.drawPath(arrow_path)
 
     def paint(self, painter, option, widget):
-        """Отрисовка пути с рамкой выделения."""
-        # Отключаем стандартную отрисовку Qt для выделенных элементов
+        """Renders path with selection outline."""
+        # Disable standard Qt rendering for selected items
         option.state &= ~QtWidgets.QStyle.StateFlag.State_Selected
         option.state &= ~QtWidgets.QStyle.StateFlag.State_HasFocus
-        # Рисуем основную линию
+        # Draw main line
         super().paint(painter, option, widget)
         
         path = self.path()
-        # Рисуем стрелку в зависимости от стиля
+        # Draw arrow depending on style
         if self.pen_style == 'arrow':
             self._draw_arrow_right(painter, path)
         elif self.pen_style == '<-':
@@ -1122,13 +1122,13 @@ class BeeDrawItem(BeeItemMixin, QtWidgets.QGraphicsPathItem):
         self.paint_selectable(painter, option, widget)
 
     def paint_debug(self, painter, option, widget):
-        """Переопределяем для полного отключения отладочной информации."""
-        # Полностью отключаем отладочную информацию для линий
+        """Override to completely disable debug information."""
+        # Completely disable debug information for lines
         pass
 
     def paint_selectable(self, painter, option, widget):
-        """Переопределяем для убирания пунктирной обводки (отладочной информации)."""
-        # Не вызываем paint_debug, чтобы убрать пунктирную обводку
+        """Override to remove dashed outline (debug information)."""
+        # Don't call paint_debug to remove dashed outline
         # self.paint_debug(painter, option, widget)
 
         if not self.has_selection_outline():
@@ -1152,7 +1152,7 @@ class BeeDrawItem(BeeItemMixin, QtWidgets.QGraphicsPathItem):
                 painter.drawPoint(corner)
 
     def copy_to_clipboard(self, clipboard):
-        """Для рисования копирование не поддерживается."""
+        """Copying is not supported for drawings."""
         pass
 
 
@@ -1231,6 +1231,6 @@ class BeeErrorItem(BeeItemMixin, QtWidgets.QGraphicsTextItem):
         clipboard.setText(self.toPlainText())
 
 
-# Импортируем GIF item для регистрации в item_registry
+# Import GIF item for registration in item_registry
 from beeref.gif_item import BeeGifItem  # noqa: E402, F401
 

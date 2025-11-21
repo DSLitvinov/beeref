@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 
 def is_gif_file(path):
-    """Проверяет, является ли файл GIF."""
+    """Checks if file is a GIF."""
     if isinstance(path, str):
         ext = os.path.splitext(path)[1].lower()
         return ext == '.gif'
@@ -95,9 +95,9 @@ def exif_rotated_image(path=None):
 def load_image(path):
     if isinstance(path, str):
         path = os.path.normpath(path)
-        # Проверяем, является ли файл GIF
+        # Check if file is a GIF
         if is_gif_file(path):
-            return (None, path)  # Возвращаем None для изображения, путь для GIF
+            return (None, path)  # Return None for image, path for GIF
         return (exif_rotated_image(path), path)
     if path.isLocalFile():
         path = os.path.normpath(path.toLocalFile())
