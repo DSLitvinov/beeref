@@ -31,7 +31,7 @@ class TextFloatingMenu(FloatingMenu):
         italic_icon = QtGui.QIcon(str(icons_path.joinpath('format-italic.svg')))
         underline_icon = QtGui.QIcon(str(icons_path.joinpath('format-underline.svg')))
         strikethrough_icon = QtGui.QIcon(str(icons_path.joinpath('format-strikethrough.svg')))
-        reset_icon = QtGui.QIcon(str(icons_path.joinpath('undo.svg')))
+        reset_icon = QtGui.QIcon(str(icons_path.joinpath('clear.svg')))
         fonts_icon = QtGui.QIcon(str(icons_path.joinpath('fonts.svg')))
 
         self.text_color_btn = self.add_button(

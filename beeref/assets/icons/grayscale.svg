@@ -1,8 +1,20 @@
-<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M19 2C20.6569 2 22 3.34315 22 5V19C22 20.6569 20.6569 22 19 22H5C3.34315 22 2 20.6569 2 19V5C2 3.34315 3.34315 2 5 2H19ZM5 3C3.89543 3 3 3.89543 3 5V19C3 20.1046 3.89543 21 5 21H19C20.1046 21 21 20.1046 21 19V5C21 3.89543 20.1046 3 19 3H5Z" fill="white"/>
-<path d="M11.5 14.5H4V19C4 19.5523 4.44771 20 5 20H11.5V14.5Z" fill="#0059FF"/>
-<path d="M11.5 4H5C4.44771 4 4 4.44772 4 5V9.5H11.5V4Z" fill="#FF0000"/>
-<path d="M12.5 20H19C19.5523 20 20 19.5523 20 19V12H12.5V20Z" fill="#FFFEFE"/>
-<path d="M12.5 12H20V5C20 4.44772 19.5523 4 19 4H12.5V12Z" fill="black"/>
-<path d="M4 9.5H11.5V14.5H4V9.5Z" fill="#4DFF00"/>
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M16 2C23.732 2 30 8.26801 30 16C30 23.732 23.732 30 16 30C8.26801 30 2 23.732 2 16C2 8.26801 8.26801 2 16 2ZM16 29C23.1797 29 29 23.1797 29 16C29 8.8203 23.1797 3 16 3V29Z" fill="white"/>
+<path d="M16 16.9286C16 9.74887 16 3 16 3C23.1797 3 29 8.8203 29 16C29 23.1797 23.1797 29 16 29C16 29 16 24.1083 16 16.9286Z" fill="white" fill-opacity="0.24"/>
+<circle cx="18" cy="6" r="1" fill="white" fill-opacity="0.8"/>
+<circle cx="18" cy="10" r="1" fill="white" fill-opacity="0.8"/>
+<circle cx="22" cy="10" r="1" fill="white" fill-opacity="0.8"/>
+<circle cx="22" cy="6" r="1" fill="white" fill-opacity="0.8"/>
+<circle cx="18" cy="14" r="1" fill="white" fill-opacity="0.8"/>
+<circle cx="22" cy="14" r="1" fill="white" fill-opacity="0.8"/>
+<circle cx="26" cy="14" r="1" fill="white" fill-opacity="0.8"/>
+<circle cx="26" cy="10" r="1" fill="white" fill-opacity="0.8"/>
+<circle cx="18" cy="18" r="1" fill="white" fill-opacity="0.8"/>
+<circle cx="22" cy="18" r="1" fill="white" fill-opacity="0.8"/>
+<circle cx="26" cy="18" r="1" fill="white" fill-opacity="0.8"/>
+<circle cx="26" cy="22" r="1" fill="white" fill-opacity="0.8"/>
+<circle cx="18" cy="22" r="1" fill="white" fill-opacity="0.8"/>
+<circle cx="22" cy="22" r="1" fill="white" fill-opacity="0.8"/>
+<circle cx="22" cy="26" r="1" fill="white" fill-opacity="0.8"/>
+<circle cx="18" cy="26" r="1" fill="white" fill-opacity="0.8"/>
 </svg>
